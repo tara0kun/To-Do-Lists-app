@@ -15,6 +15,10 @@
     --md-on-surface-variant: #49454F;
     --md-outline: #79747E;
     --md-error: #B3261E;
+    --p-high: #E53935;
+    --p-medium: #F9A825;
+    --p-low: #43A047;
+    --p-someday: #9E9E9E;
     --radius: 16px;
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
   }
@@ -59,6 +63,7 @@
     color: var(--md-on-primary-container);
   }
   header h1 { font-size: 20px; font-weight: 500; margin: 0; }
+  header .header-actions { display: flex; gap: 4px; }
   .icon-btn {
     background: transparent;
     border: none;
@@ -83,6 +88,14 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  .section-header {
+    margin: 8px 0 0;
+    padding: 4px 4px 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--md-on-surface-variant);
+    letter-spacing: 0.5px;
   }
   .task {
     display: flex;
@@ -127,14 +140,32 @@
     padding: 6px 4px 6px 0;
     min-width: 0;
   }
+  .task-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .priority-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .priority-dot.high { background: var(--p-high); }
+  .priority-dot.medium { background: var(--p-medium); }
+  .priority-dot.low { background: var(--p-low); }
+  .priority-dot.someday { background: var(--p-someday); }
   .task-title {
     font-size: 16px;
     word-break: break-word;
+    flex: 1;
   }
+  .task.high .task-title { font-weight: 600; }
   .task.done .task-title {
     text-decoration: line-through;
     font-style: italic;
     color: var(--md-on-surface-variant);
+    font-weight: normal;
   }
   .task-meta {
     margin-top: 4px;
@@ -223,6 +254,7 @@
   }
   @keyframes slideup { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .sheet h2 { margin: 0 0 16px; font-size: 20px; font-weight: 500; }
+  .sheet h3 { margin: 16px 0 8px; font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-bottom: 6px; }
   .field input[type="text"], .field input[type="date"], .field input[type="time"] {
@@ -239,6 +271,31 @@
   .field input:focus { border-color: var(--md-primary); border-width: 2px; padding: 11px 13px; }
   .field-row { display: flex; gap: 8px; }
   .field-row > * { flex: 1; }
+
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filter-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--md-outline);
+    border-radius: 100px;
+    background: transparent;
+    color: var(--md-on-surface);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-chip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .filter-chip.selected {
+    background: var(--md-primary-container);
+    border-color: transparent;
+    color: var(--md-on-primary-container);
+  }
 
   .switch-row {
     display: flex;
@@ -274,6 +331,14 @@
   .switch input:checked + .slider { background: var(--md-primary); }
   .switch input:checked + .slider::before { transform: translateX(20px); background: white; }
   .switch input:disabled + .slider { cursor: not-allowed; }
+
+  .radio-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    cursor: pointer;
+  }
+  .radio-row input[type="radio"] { margin-right: 12px; accent-color: var(--md-primary); }
 
   .actions { display: flex; gap: 8px; margin-top: 24px; }
   .btn-text, .btn-primary {
@@ -311,9 +376,14 @@
 <div class="phone">
   <header>
     <h1>ToDo</h1>
-    <button id="clearBtn" class="icon-btn" title="完了済みを削除" aria-label="完了済みを削除" hidden>
-      <svg viewBox="0 0 24 24"><path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3zM14 5h-3l-1-1H6L5 5H2v2h12z"/></svg>
-    </button>
+    <div class="header-actions">
+      <button id="sortBtn" class="icon-btn" title="並び替え" aria-label="並び替え">
+        <svg viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
+      </button>
+      <button id="clearBtn" class="icon-btn" title="完了済みを削除" aria-label="完了済みを削除" hidden>
+        <svg viewBox="0 0 24 24"><path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3zM14 5h-3l-1-1H6L5 5H2v2h12z"/></svg>
+      </button>
+    </div>
   </header>
 
   <div id="list" class="list"></div>
@@ -326,12 +396,17 @@
   <div class="footer-note">Webモック · データはこのブラウザにのみ保存されます</div>
 </div>
 
+<!-- Add/Edit modal -->
 <div class="modal-backdrop" id="modal">
   <div class="sheet" role="dialog" aria-modal="true">
     <h2 id="sheetTitle">新しいタスク</h2>
     <div class="field">
       <label>タイトル</label>
       <input type="text" id="fTitle" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>重要度</label>
+      <div class="filter-chips" id="priorityChips"></div>
     </div>
     <div class="field">
       <label>期限（任意）</label>
@@ -362,13 +437,50 @@
   </div>
 </div>
 
+<!-- Sort/display options modal -->
+<div class="modal-backdrop" id="sortModal">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <h2>並び替え</h2>
+    <div id="sortOptions"></div>
+    <h3>表示オプション</h3>
+    <div class="switch-row">
+      <span>完了済みを別セクションに分ける</span>
+      <label class="switch"><input type="checkbox" id="fSeparateCompleted"/><span class="slider"></span></label>
+    </div>
+    <div class="switch-row">
+      <span>期限切れを上に固定</span>
+      <label class="switch"><input type="checkbox" id="fOverdueOnTop"/><span class="slider"></span></label>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-primary" id="sortDoneBtn">完了</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  const STORAGE_KEY = 'todo-mock-tasks-v2';
-  const LEGACY_KEY = 'todo-mock-tasks-v1';
+  const STORAGE_KEY = 'todo-mock-tasks-v3';
+  const PREFS_KEY = 'todo-mock-prefs-v1';
+  const LEGACY_KEYS = ['todo-mock-tasks-v2', 'todo-mock-tasks-v1'];
+
+  const PRIORITIES = [
+    { key: 'HIGH',    label: '高',          dot: 'high',    rank: 3 },
+    { key: 'MEDIUM',  label: '中',          dot: 'medium',  rank: 2 },
+    { key: 'LOW',     label: '低',          dot: 'low',     rank: 1 },
+    { key: 'SOMEDAY', label: 'そのうちやる', dot: 'someday', rank: 0 },
+  ];
+  const SORT_MODES = [
+    { key: 'PRIORITY_THEN_DUE', label: '重要度 → 期限' },
+    { key: 'DUE_DATE_ASC',      label: '期限が近い順' },
+    { key: 'PRIORITY_DESC',     label: '重要度が高い順' },
+    { key: 'CREATED_DESC',      label: '作成日が新しい順' },
+  ];
+
   const $list = document.getElementById('list');
   const $clearBtn = document.getElementById('clearBtn');
+  const $sortBtn = document.getElementById('sortBtn');
   const $addFab = document.getElementById('addFab');
   const $modal = document.getElementById('modal');
+  const $sortModal = document.getElementById('sortModal');
   const $sheetTitle = document.getElementById('sheetTitle');
   const $fTitle = document.getElementById('fTitle');
   const $fDate = document.getElementById('fDate');
@@ -382,65 +494,133 @@
   const $rowOnDay = document.getElementById('rowOnDay');
   const $cancelBtn = document.getElementById('cancelBtn');
   const $submitBtn = document.getElementById('submitBtn');
+  const $priorityChips = document.getElementById('priorityChips');
+  const $sortOptions = document.getElementById('sortOptions');
+  const $fSeparateCompleted = document.getElementById('fSeparateCompleted');
+  const $fOverdueOnTop = document.getElementById('fOverdueOnTop');
+  const $sortDoneBtn = document.getElementById('sortDoneBtn');
 
   let tasks = loadTasks();
+  let prefs = loadPrefs();
   let editingId = null;
+  let draftPriority = 'MEDIUM';
   let pendingTimeouts = new Map();
 
   function loadTasks() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
-      // migrate from v1
-      const legacy = localStorage.getItem(LEGACY_KEY);
-      if (legacy) {
-        const v1 = JSON.parse(legacy);
-        return v1.map(t => ({...t, dueAt: null, remindAtDue: false, remindOnDay: false, onDayTime: '09:00'}));
+      for (const key of LEGACY_KEYS) {
+        const legacy = localStorage.getItem(key);
+        if (legacy) {
+          const arr = JSON.parse(legacy);
+          return arr.map(t => ({
+            dueAt: null, remindAtDue: false, remindOnDay: false, onDayTime: '09:00',
+            priority: 'MEDIUM',
+            ...t,
+          }));
+        }
       }
       return [];
     } catch { return []; }
   }
-  function saveTasks() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (!raw) return { sortMode: 'PRIORITY_THEN_DUE', separateCompleted: true, overdueOnTop: true };
+      return { sortMode: 'PRIORITY_THEN_DUE', separateCompleted: true, overdueOnTop: true, ...JSON.parse(raw) };
+    } catch { return { sortMode: 'PRIORITY_THEN_DUE', separateCompleted: true, overdueOnTop: true }; }
   }
+  function savePrefs() { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); }
+  function priorityRank(key) { return (PRIORITIES.find(p => p.key === key) || PRIORITIES[1]).rank; }
+  function priorityMeta(key) { return PRIORITIES.find(p => p.key === key) || PRIORITIES[1]; }
 
   function fmtDateTime(ms) {
     if (!ms) return '';
     const d = new Date(ms);
-    const opt = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return d.toLocaleString('ja-JP', opt);
+    return d.toLocaleString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
-  function fmtDateOnly(ms) {
-    if (!ms) return '';
-    const d = new Date(ms);
-    return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  function comparator(mode) {
+    return (a, b) => {
+      const pa = priorityRank(a.priority), pb = priorityRank(b.priority);
+      const da = a.dueAt ?? Number.POSITIVE_INFINITY;
+      const db = b.dueAt ?? Number.POSITIVE_INFINITY;
+      const ca = a.createdAt, cb = b.createdAt;
+      switch (mode) {
+        case 'DUE_DATE_ASC':
+          if (da !== db) return da - db;
+          if (pa !== pb) return pb - pa;
+          return cb - ca;
+        case 'PRIORITY_DESC':
+          if (pa !== pb) return pb - pa;
+          return cb - ca;
+        case 'CREATED_DESC':
+          return cb - ca;
+        case 'PRIORITY_THEN_DUE':
+        default:
+          if (pa !== pb) return pb - pa;
+          if (da !== db) return da - db;
+          return cb - ca;
+      }
+    };
+  }
+
+  function buildSections() {
+    const now = Date.now();
+    const active = tasks.filter(t => !t.isDone);
+    const done = tasks.filter(t => t.isDone);
+    const sortedActive = [...active].sort(comparator(prefs.sortMode));
+
+    let arrangedActive = sortedActive;
+    if (prefs.overdueOnTop) {
+      const overdue = sortedActive.filter(t => t.dueAt != null && t.dueAt < now)
+        .sort((a, b) => a.dueAt - b.dueAt);
+      const others = sortedActive.filter(t => !(t.dueAt != null && t.dueAt < now));
+      arrangedActive = [...overdue, ...others];
+    }
+
+    const sortedDone = [...done].sort((a, b) => b.createdAt - a.createdAt);
+    if (prefs.separateCompleted) {
+      const sections = [];
+      if (arrangedActive.length) sections.push({ key: 'active', label: null, tasks: arrangedActive });
+      if (sortedDone.length) sections.push({ key: 'completed', label: `完了済み (${sortedDone.length})`, tasks: sortedDone });
+      return sections;
+    } else {
+      const all = [...arrangedActive, ...sortedDone];
+      return all.length ? [{ key: 'all', label: null, tasks: all }] : [];
+    }
   }
 
   function render() {
     $list.innerHTML = '';
-    const sorted = [...tasks].sort((a, b) => {
-      if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
-      const da = a.dueAt ?? Number.POSITIVE_INFINITY;
-      const db = b.dueAt ?? Number.POSITIVE_INFINITY;
-      if (da !== db) return da - db;
-      return b.createdAt - a.createdAt;
-    });
-
-    if (sorted.length === 0) {
+    const sections = buildSections();
+    if (tasks.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.textContent = 'タスクはまだありません。最初の1件を追加しましょう。';
       $list.appendChild(empty);
     } else {
-      for (const task of sorted) $list.appendChild(renderTask(task));
+      for (const section of sections) {
+        if (section.label) {
+          const h = document.createElement('div');
+          h.className = 'section-header';
+          h.textContent = section.label;
+          $list.appendChild(h);
+        }
+        for (const task of section.tasks) $list.appendChild(renderTask(task));
+      }
     }
-
     $clearBtn.hidden = !tasks.some(t => t.isDone);
   }
 
   function renderTask(task) {
+    const meta = priorityMeta(task.priority || 'MEDIUM');
     const row = document.createElement('div');
-    row.className = 'task' + (task.isDone ? ' done' : '');
+    const isHigh = (task.priority || 'MEDIUM') === 'HIGH';
+    row.className = 'task' + (task.isDone ? ' done' : '') + (isHigh ? ' high' : '');
     row.addEventListener('click', e => {
       if (e.target.tagName === 'INPUT' || e.target.closest('.icon-btn')) return;
       openEdit(task.id);
@@ -449,40 +629,46 @@
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'checkbox';
-    cb.checked = task.isDone;
+    cb.checked = !!task.isDone;
     cb.addEventListener('change', () => toggle(task.id));
 
     const body = document.createElement('div');
     body.className = 'task-body';
 
+    const titleRow = document.createElement('div');
+    titleRow.className = 'task-title-row';
+    const dot = document.createElement('span');
+    dot.className = 'priority-dot ' + meta.dot;
+    dot.title = `重要度: ${meta.label}`;
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.title;
-    body.appendChild(title);
+    titleRow.appendChild(dot);
+    titleRow.appendChild(title);
+    body.appendChild(titleRow);
 
     if (task.dueAt) {
-      const meta = document.createElement('div');
-      meta.className = 'task-meta';
-
+      const metaEl = document.createElement('div');
+      metaEl.className = 'task-meta';
       const overdue = !task.isDone && task.dueAt < Date.now();
       const dueChip = document.createElement('span');
       dueChip.className = 'chip' + (overdue ? ' due-overdue' : '');
       dueChip.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4 13.5l-5-3V7h1.5v4.7l4.3 2.6z"/></svg>${fmtDateTime(task.dueAt)}`;
-      meta.appendChild(dueChip);
+      metaEl.appendChild(dueChip);
 
       if (task.remindAtDue) {
         const c = document.createElement('span');
         c.className = 'chip';
-        c.innerHTML = `<svg viewBox="0 0 24 24"><path d="M7.6 21.7c-.4-.6-.4-1.5 0-2.1l1-1.4c.3-.4.5-1 .5-1.6V14a4 4 0 014-4v-.5a.5.5 0 011 0V10a4 4 0 014 4v2.6c0 .6.2 1.2.5 1.6l1 1.4c.4.6.4 1.5 0 2.1l-.6.8h-11l-.6-.8zM10 22h4a2 2 0 01-4 0z"/></svg>期限通知`;
-        meta.appendChild(c);
+        c.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V11a6 6 0 00-5-5.9V4a1 1 0 10-2 0v1.1A6 6 0 006 11v5l-2 2v1h16v-1l-2-2z"/></svg>期限通知`;
+        metaEl.appendChild(c);
       }
       if (task.remindOnDay) {
         const c = document.createElement('span');
         c.className = 'chip';
         c.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V11a6 6 0 00-5-5.9V4a1 1 0 10-2 0v1.1A6 6 0 006 11v5l-2 2v1h16v-1l-2-2z"/></svg>当日 ${task.onDayTime || '09:00'}`;
-        meta.appendChild(c);
+        metaEl.appendChild(c);
       }
-      body.appendChild(meta);
+      body.appendChild(metaEl);
     }
 
     const del = document.createElement('button');
@@ -499,32 +685,55 @@
 
   function combinedDueAt(dateStr, timeStr) {
     if (!dateStr) return null;
-    const t = timeStr || '00:00';
-    return new Date(`${dateStr}T${t}`).getTime();
+    return new Date(`${dateStr}T${timeStr || '00:00'}`).getTime();
   }
-  function dateOnlyMillis(dateStr) {
-    if (!dateStr) return null;
-    return new Date(`${dateStr}T00:00`).getTime();
+
+  function renderPriorityChips() {
+    $priorityChips.innerHTML = '';
+    for (const p of PRIORITIES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'filter-chip' + (p.key === draftPriority ? ' selected' : '');
+      btn.innerHTML = `<span class="dot priority-dot ${p.dot}"></span>${p.label}`;
+      btn.addEventListener('click', () => { draftPriority = p.key; renderPriorityChips(); });
+      $priorityChips.appendChild(btn);
+    }
+  }
+
+  function renderSortOptions() {
+    $sortOptions.innerHTML = '';
+    for (const m of SORT_MODES) {
+      const id = `sort_${m.key}`;
+      const wrap = document.createElement('label');
+      wrap.className = 'radio-row';
+      wrap.innerHTML = `<input type="radio" name="sortMode" id="${id}" value="${m.key}" ${prefs.sortMode === m.key ? 'checked' : ''}/> ${m.label}`;
+      wrap.querySelector('input').addEventListener('change', () => {
+        prefs.sortMode = m.key; savePrefs(); render();
+      });
+      $sortOptions.appendChild(wrap);
+    }
   }
 
   function openAdd() {
     editingId = null;
+    draftPriority = 'MEDIUM';
     $sheetTitle.textContent = '新しいタスク';
     $submitBtn.textContent = '追加';
     $fTitle.value = '';
-    $fDate.value = '';
-    $fTime.value = '';
+    $fDate.value = ''; $fTime.value = '';
     $fRemindAtDue.checked = false;
     $fRemindOnDay.checked = false;
     $fOnDayTime.value = '09:00';
+    renderPriorityChips();
     refreshFormState();
-    showModal();
+    showModal($modal);
     setTimeout(() => $fTitle.focus(), 50);
   }
   function openEdit(id) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     editingId = id;
+    draftPriority = task.priority || 'MEDIUM';
     $sheetTitle.textContent = 'タスクを編集';
     $submitBtn.textContent = '保存';
     $fTitle.value = task.title;
@@ -532,17 +741,16 @@
       const d = new Date(task.dueAt);
       $fDate.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       $fTime.value = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    } else {
-      $fDate.value = ''; $fTime.value = '';
-    }
+    } else { $fDate.value = ''; $fTime.value = ''; }
     $fRemindAtDue.checked = !!task.remindAtDue;
     $fRemindOnDay.checked = !!task.remindOnDay;
     $fOnDayTime.value = task.onDayTime || '09:00';
+    renderPriorityChips();
     refreshFormState();
-    showModal();
+    showModal($modal);
   }
-  function showModal() { $modal.classList.add('show'); }
-  function hideModal() { $modal.classList.remove('show'); }
+  function showModal(el) { el.classList.add('show'); }
+  function hideModal(el) { el.classList.remove('show'); }
 
   function refreshFormState() {
     const hasDate = !!$fDate.value;
@@ -566,10 +774,25 @@
     $fDate.value = ''; $fTime.value = '';
     refreshFormState();
   });
-  $cancelBtn.addEventListener('click', hideModal);
-  $modal.addEventListener('click', e => { if (e.target === $modal) hideModal(); });
+  $cancelBtn.addEventListener('click', () => hideModal($modal));
+  $modal.addEventListener('click', e => { if (e.target === $modal) hideModal($modal); });
+  $sortModal.addEventListener('click', e => { if (e.target === $sortModal) hideModal($sortModal); });
   $addFab.addEventListener('click', openAdd);
   $clearBtn.addEventListener('click', clearCompleted);
+
+  $sortBtn.addEventListener('click', () => {
+    renderSortOptions();
+    $fSeparateCompleted.checked = prefs.separateCompleted;
+    $fOverdueOnTop.checked = prefs.overdueOnTop;
+    showModal($sortModal);
+  });
+  $sortDoneBtn.addEventListener('click', () => hideModal($sortModal));
+  $fSeparateCompleted.addEventListener('change', e => {
+    prefs.separateCompleted = e.target.checked; savePrefs(); render();
+  });
+  $fOverdueOnTop.addEventListener('change', e => {
+    prefs.overdueOnTop = e.target.checked; savePrefs(); render();
+  });
 
   $submitBtn.addEventListener('click', () => {
     const title = $fTitle.value.trim();
@@ -578,6 +801,7 @@
     const hasDate = !!$fDate.value;
     const data = {
       title,
+      priority: draftPriority,
       dueAt,
       remindAtDue: hasDate && !!$fTime.value && $fRemindAtDue.checked,
       remindOnDay: hasDate && $fRemindOnDay.checked,
@@ -590,7 +814,7 @@
     }
     saveTasks();
     rescheduleAll();
-    hideModal();
+    hideModal($modal);
     render();
   });
 
@@ -607,7 +831,6 @@
     saveTasks(); rescheduleAll(); render();
   }
 
-  // Best-effort browser notifications (only fires while page is open)
   function rescheduleAll() {
     for (const t of pendingTimeouts.values()) clearTimeout(t);
     pendingTimeouts.clear();
@@ -616,7 +839,6 @@
       Notification.requestPermission().catch(() => {});
     }
     if (Notification.permission !== 'granted') return;
-
     const now = Date.now();
     for (const task of tasks) {
       if (task.isDone || !task.dueAt) continue;
@@ -624,7 +846,6 @@
         scheduleNotif(task, 'AT_DUE', task.dueAt, '期限になりました');
       }
       if (task.remindOnDay) {
-        const day = dateOnlyMillis(new Date(task.dueAt).toISOString().slice(0,10));
         const [h, m] = (task.onDayTime || '09:00').split(':').map(n => parseInt(n, 10));
         const onDay = new Date(task.dueAt);
         onDay.setHours(h, m, 0, 0);
@@ -636,14 +857,10 @@
   }
   function scheduleNotif(task, kind, when, heading) {
     const delay = when - Date.now();
-    if (delay > 2147483647) return; // > ~24.8 days, setTimeout limit
+    if (delay > 2147483647) return;
     const key = `${task.id}_${kind}`;
     const id = setTimeout(() => {
-      try {
-        new Notification(heading, {
-          body: `${task.title}（${fmtDateTime(task.dueAt)}）`,
-        });
-      } catch {}
+      try { new Notification(heading, { body: `${task.title}（${fmtDateTime(task.dueAt)}）` }); } catch {}
       pendingTimeouts.delete(key);
     }, delay);
     pendingTimeouts.set(key, id);
