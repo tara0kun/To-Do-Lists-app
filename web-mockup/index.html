@@ -355,6 +355,16 @@
         <input type="time" id="fOnDayTime" value="09:00" />
       </div>
     </div>
+    <div class="field">
+      <label>カレンダー連携</label>
+      <div class="switch-row" id="rowCalendar">
+        <span>Googleカレンダーにも登録</span>
+        <label class="switch"><input type="checkbox" id="fAddToCalendar"/><span class="slider"></span></label>
+      </div>
+      <div id="calendarHint" style="font-size:12px;color:var(--md-on-surface-variant);" hidden>
+        期限を設定するとカレンダーに登録できます
+      </div>
+    </div>
     <div class="actions">
       <button type="button" class="btn-text" id="cancelBtn">キャンセル</button>
       <button type="button" class="btn-primary" id="submitBtn" disabled>追加</button>
@@ -380,6 +390,9 @@
   const $onDayTimeRow = document.getElementById('onDayTimeRow');
   const $rowAtDue = document.getElementById('rowAtDue');
   const $rowOnDay = document.getElementById('rowOnDay');
+  const $rowCalendar = document.getElementById('rowCalendar');
+  const $fAddToCalendar = document.getElementById('fAddToCalendar');
+  const $calendarHint = document.getElementById('calendarHint');
   const $cancelBtn = document.getElementById('cancelBtn');
   const $submitBtn = document.getElementById('submitBtn');
 
@@ -517,6 +530,7 @@
     $fRemindAtDue.checked = false;
     $fRemindOnDay.checked = false;
     $fOnDayTime.value = '09:00';
+    $fAddToCalendar.checked = false;
     refreshFormState();
     showModal();
     setTimeout(() => $fTitle.focus(), 50);
@@ -538,6 +552,7 @@
     $fRemindAtDue.checked = !!task.remindAtDue;
     $fRemindOnDay.checked = !!task.remindOnDay;
     $fOnDayTime.value = task.onDayTime || '09:00';
+    $fAddToCalendar.checked = false;
     refreshFormState();
     showModal();
   }
@@ -555,6 +570,10 @@
     if (!hasDate) $fRemindOnDay.checked = false;
     $onDayTimeRow.hidden = !$fRemindOnDay.checked;
     $fClearDue.hidden = !hasDate;
+    $rowCalendar.classList.toggle('disabled', !hasDateTime);
+    $fAddToCalendar.disabled = !hasDateTime;
+    if (!hasDateTime) $fAddToCalendar.checked = false;
+    $calendarHint.hidden = hasDateTime;
     $submitBtn.disabled = $fTitle.value.trim().length === 0;
   }
 
@@ -590,9 +609,24 @@
     }
     saveTasks();
     rescheduleAll();
+    if (dueAt && $fAddToCalendar.checked) {
+      openInGoogleCalendar({ ...data, dueAt });
+    }
     hideModal();
     render();
   });
+
+  function openInGoogleCalendar(task) {
+    const start = new Date(task.dueAt);
+    const end = new Date(task.dueAt + 60 * 60 * 1000);
+    const fmt = d => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
+    const url = new URL('https://calendar.google.com/calendar/render');
+    url.searchParams.set('action', 'TEMPLATE');
+    url.searchParams.set('text', task.title);
+    url.searchParams.set('dates', `${fmt(start)}/${fmt(end)}`);
+    url.searchParams.set('details', 'ToDoアプリから追加');
+    window.open(url.toString(), '_blank', 'noopener');
+  }
 
   function toggle(id) {
     const t = tasks.find(t => t.id === id);

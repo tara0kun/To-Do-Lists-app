@@ -56,6 +56,7 @@ data class TaskDraft(
     val remindOnDay: Boolean = false,
     val onDayHour: Int = 9,
     val onDayMinute: Int = 0,
+    val addToCalendar: Boolean = false,
 ) {
     val combinedDueAt: Long?
         get() {
@@ -201,6 +202,22 @@ fun AddEditTaskSheet(
                         label = { Text(formatTime(draft.onDayHour, draft.onDayMinute)) },
                     )
                 }
+            }
+
+            Spacer(Modifier.height(4.dp))
+            Text("カレンダー連携", style = MaterialTheme.typography.titleSmall)
+            ReminderRow(
+                label = "Googleカレンダーにも登録",
+                enabled = draft.combinedDueAt != null,
+                checked = draft.addToCalendar,
+                onCheckedChange = { draft = draft.copy(addToCalendar = it) },
+            )
+            if (draft.combinedDueAt == null) {
+                Text(
+                    text = "期限を設定するとカレンダーに登録できます",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             Spacer(Modifier.height(8.dp))

@@ -38,12 +38,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.todolists.R
+import com.example.todolists.calendar.CalendarIntegration
 import com.example.todolists.data.Task
 import java.text.DateFormat
 import java.util.Date
@@ -53,6 +55,7 @@ import java.util.Locale
 @Composable
 fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
     val tasks by viewModel.tasks.collectAsState()
+    val context = LocalContext.current
     var showAddSheet by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
 
@@ -119,6 +122,19 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                     remindOnDayHour = draft.onDayHour,
                     remindOnDayMinute = draft.onDayMinute,
                 )
+                if (draft.addToCalendar && draft.combinedDueAt != null) {
+                    CalendarIntegration.openInsertEvent(
+                        context,
+                        Task(
+                            title = draft.title.trim(),
+                            dueAt = draft.combinedDueAt,
+                            remindAtDue = draft.remindAtDue,
+                            remindOnDay = draft.remindOnDay,
+                            remindOnDayHour = draft.onDayHour,
+                            remindOnDayMinute = draft.onDayMinute,
+                        ),
+                    )
+                }
             },
             submitLabel = "追加",
         )
@@ -129,16 +145,18 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             initial = task.toDraft(),
             onDismiss = { editingTask = null },
             onSubmit = { draft ->
-                viewModel.update(
-                    task.copy(
-                        title = draft.title.trim(),
-                        dueAt = draft.combinedDueAt,
-                        remindAtDue = draft.remindAtDue && draft.combinedDueAt != null,
-                        remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
-                        remindOnDayHour = draft.onDayHour,
-                        remindOnDayMinute = draft.onDayMinute,
-                    )
+                val updated = task.copy(
+                    title = draft.title.trim(),
+                    dueAt = draft.combinedDueAt,
+                    remindAtDue = draft.remindAtDue && draft.combinedDueAt != null,
+                    remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
+                    remindOnDayHour = draft.onDayHour,
+                    remindOnDayMinute = draft.onDayMinute,
                 )
+                viewModel.update(updated)
+                if (draft.addToCalendar && updated.dueAt != null) {
+                    CalendarIntegration.openInsertEvent(context, updated)
+                }
             },
             submitLabel = "保存",
         )
