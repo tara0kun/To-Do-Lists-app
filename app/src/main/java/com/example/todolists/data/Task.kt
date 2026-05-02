@@ -9,4 +9,9 @@ data class Task(
     val title: String,
     val isDone: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
+    val dueAt: Long? = null,
+    val remindAtDue: Boolean = false,
+    val remindOnDay: Boolean = false,
+    val remindOnDayHour: Int = 9,
+    val remindOnDayMinute: Int = 0,
 )

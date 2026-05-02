@@ -9,8 +9,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TaskDao {
-    @Query("SELECT * FROM tasks ORDER BY isDone ASC, createdAt DESC")
+    @Query("SELECT * FROM tasks ORDER BY isDone ASC, dueAt IS NULL, dueAt ASC, createdAt DESC")
     fun observeAll(): Flow<List<Task>>
+
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun findById(id: Long): Task?
+
+    @Query("SELECT * FROM tasks WHERE isDone = 0 AND (remindAtDue = 1 OR remindOnDay = 1)")
+    suspend fun activeRemindable(): List<Task>
 
     @Insert
     suspend fun insert(task: Task): Long
@@ -21,6 +27,9 @@ interface TaskDao {
     @Delete
     suspend fun delete(task: Task)
 
+    @Query("SELECT * FROM tasks WHERE isDone = 1")
+    suspend fun completed(): List<Task>
+
     @Query("DELETE FROM tasks WHERE isDone = 1")
-    suspend fun clearCompleted()
+    suspend fun deleteCompleted()
 }

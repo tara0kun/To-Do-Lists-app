@@ -14,6 +14,7 @@
     --md-on-surface: #1C1B1F;
     --md-on-surface-variant: #49454F;
     --md-outline: #79747E;
+    --md-error: #B3261E;
     --radius: 16px;
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
   }
@@ -47,6 +48,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative;
   }
   header {
     display: flex;
@@ -56,11 +58,7 @@
     background: var(--md-primary-container);
     color: var(--md-on-primary-container);
   }
-  header h1 {
-    font-size: 20px;
-    font-weight: 500;
-    margin: 0;
-  }
+  header h1 { font-size: 20px; font-weight: 500; margin: 0; }
   .icon-btn {
     background: transparent;
     border: none;
@@ -78,65 +76,26 @@
   .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
-  .input-row {
-    display: flex;
-    gap: 8px;
-    padding: 16px 16px 8px;
-    align-items: center;
-  }
-  .input-field {
-    flex: 1;
-    position: relative;
-  }
-  .input-field input {
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px solid var(--md-outline);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--md-on-surface);
-    font-size: 16px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .input-field input:focus { border-color: var(--md-primary); border-width: 2px; padding: 13px 15px; }
-
-  .add-btn {
-    background: var(--md-primary-container);
-    color: var(--md-on-primary-container);
-    border: none;
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: filter 0.15s, transform 0.05s;
-  }
-  .add-btn:hover:not(:disabled) { filter: brightness(0.95); }
-  .add-btn:active:not(:disabled) { transform: scale(0.96); }
-  .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .add-btn svg { width: 22px; height: 22px; fill: currentColor; }
-
   .list {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 16px 24px;
+    padding: 12px 16px 96px;
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
   .task {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     background: var(--md-surface);
     border: 1px solid var(--md-surface-variant);
     border-radius: var(--radius);
     padding: 6px 8px 6px 4px;
     box-shadow: var(--shadow);
+    cursor: pointer;
     animation: pop 0.18s ease-out;
   }
+  .task:hover { filter: brightness(0.98); }
   @keyframes pop {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
@@ -147,38 +106,59 @@
     height: 20px;
     border: 2px solid var(--md-outline);
     border-radius: 4px;
-    margin: 0 12px;
+    margin: 10px 12px;
     cursor: pointer;
     position: relative;
     flex-shrink: 0;
     transition: background 0.15s, border-color 0.15s;
   }
-  .checkbox:checked {
-    background: var(--md-primary);
-    border-color: var(--md-primary);
-  }
+  .checkbox:checked { background: var(--md-primary); border-color: var(--md-primary); }
   .checkbox:checked::after {
     content: '';
     position: absolute;
-    top: 2px;
-    left: 5px;
-    width: 5px;
-    height: 10px;
+    top: 2px; left: 5px;
+    width: 5px; height: 10px;
     border: solid white;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
-  .task-title {
+  .task-body {
     flex: 1;
+    padding: 6px 4px 6px 0;
+    min-width: 0;
+  }
+  .task-title {
     font-size: 16px;
     word-break: break-word;
-    padding: 8px 4px;
   }
   .task.done .task-title {
     text-decoration: line-through;
     font-style: italic;
     color: var(--md-on-surface-variant);
   }
+  .task-meta {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--md-on-surface-variant);
+  }
+  .task-meta .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--md-surface-variant);
+    color: var(--md-on-surface-variant);
+  }
+  .task-meta .chip.due-overdue { background: #ffd6d6; color: #8a1717; }
+  @media (prefers-color-scheme: dark) {
+    .task-meta .chip.due-overdue { background: #5a1f1f; color: #ffb4b4; }
+  }
+  .task-meta .chip svg { width: 14px; height: 14px; fill: currentColor; }
   .empty {
     flex: 1;
     display: flex;
@@ -195,6 +175,136 @@
     padding: 8px 16px 16px;
     opacity: 0.7;
   }
+  .fab {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+    border: none;
+    height: 56px;
+    padding: 0 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .fab:hover { filter: brightness(0.95); }
+  .fab:active { transform: scale(0.97); }
+  .fab svg { width: 20px; height: 20px; fill: currentColor; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+    animation: fade 0.15s ease-out;
+  }
+  .modal-backdrop.show { display: flex; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .sheet {
+    width: 100%;
+    max-width: 420px;
+    background: var(--md-surface);
+    border-radius: 28px 28px 0 0;
+    padding: 24px 20px 32px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideup 0.2s ease-out;
+  }
+  @keyframes slideup { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .sheet h2 { margin: 0 0 16px; font-size: 20px; font-weight: 500; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-bottom: 6px; }
+  .field input[type="text"], .field input[type="date"], .field input[type="time"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--md-outline);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--md-on-surface);
+    font-size: 16px;
+    outline: none;
+    color-scheme: light dark;
+  }
+  .field input:focus { border-color: var(--md-primary); border-width: 2px; padding: 11px 13px; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row > * { flex: 1; }
+
+  .switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+  }
+  .switch-row.disabled { opacity: 0.4; }
+  .switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--md-surface-variant);
+    border-radius: 24px;
+    transition: 0.2s;
+  }
+  .switch span.slider::before {
+    content: '';
+    position: absolute;
+    height: 18px; width: 18px;
+    left: 3px; top: 3px;
+    background: var(--md-on-surface-variant);
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .switch input:checked + .slider { background: var(--md-primary); }
+  .switch input:checked + .slider::before { transform: translateX(20px); background: white; }
+  .switch input:disabled + .slider { cursor: not-allowed; }
+
+  .actions { display: flex; gap: 8px; margin-top: 24px; }
+  .btn-text, .btn-primary {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .btn-text {
+    background: transparent;
+    color: var(--md-primary);
+  }
+  .btn-text:hover { background: rgba(103,80,164,0.08); }
+  .btn-primary {
+    background: var(--md-primary);
+    color: white;
+  }
+  .btn-primary:hover:not(:disabled) { filter: brightness(0.95); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--md-error);
+    font-size: 13px;
+    padding: 4px 0;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -206,43 +316,113 @@
     </button>
   </header>
 
-  <div class="input-row">
-    <div class="input-field">
-      <input id="titleInput" type="text" placeholder="新しいタスクを入力" autocomplete="off" />
-    </div>
-    <button id="addBtn" class="add-btn" title="タスクを追加" aria-label="タスクを追加" disabled>
-      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
-    </button>
-  </div>
-
   <div id="list" class="list"></div>
+
+  <button class="fab" id="addFab">
+    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+    タスクを追加
+  </button>
 
   <div class="footer-note">Webモック · データはこのブラウザにのみ保存されます</div>
 </div>
 
+<div class="modal-backdrop" id="modal">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <h2 id="sheetTitle">新しいタスク</h2>
+    <div class="field">
+      <label>タイトル</label>
+      <input type="text" id="fTitle" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>期限（任意）</label>
+      <div class="field-row">
+        <input type="date" id="fDate" />
+        <input type="time" id="fTime" />
+      </div>
+      <button type="button" class="clear-btn" id="fClearDue" hidden>期限をクリア</button>
+    </div>
+    <div class="field">
+      <label>リマインダー</label>
+      <div class="switch-row" id="rowAtDue">
+        <span>期限時刻に通知</span>
+        <label class="switch"><input type="checkbox" id="fRemindAtDue"/><span class="slider"></span></label>
+      </div>
+      <div class="switch-row" id="rowOnDay">
+        <span>当日に通知</span>
+        <label class="switch"><input type="checkbox" id="fRemindOnDay"/><span class="slider"></span></label>
+      </div>
+      <div class="field-row" id="onDayTimeRow" style="margin-top:8px;" hidden>
+        <input type="time" id="fOnDayTime" value="09:00" />
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-text" id="cancelBtn">キャンセル</button>
+      <button type="button" class="btn-primary" id="submitBtn" disabled>追加</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  const STORAGE_KEY = 'todo-mock-tasks-v1';
+  const STORAGE_KEY = 'todo-mock-tasks-v2';
+  const LEGACY_KEY = 'todo-mock-tasks-v1';
   const $list = document.getElementById('list');
-  const $input = document.getElementById('titleInput');
-  const $addBtn = document.getElementById('addBtn');
   const $clearBtn = document.getElementById('clearBtn');
+  const $addFab = document.getElementById('addFab');
+  const $modal = document.getElementById('modal');
+  const $sheetTitle = document.getElementById('sheetTitle');
+  const $fTitle = document.getElementById('fTitle');
+  const $fDate = document.getElementById('fDate');
+  const $fTime = document.getElementById('fTime');
+  const $fClearDue = document.getElementById('fClearDue');
+  const $fRemindAtDue = document.getElementById('fRemindAtDue');
+  const $fRemindOnDay = document.getElementById('fRemindOnDay');
+  const $fOnDayTime = document.getElementById('fOnDayTime');
+  const $onDayTimeRow = document.getElementById('onDayTimeRow');
+  const $rowAtDue = document.getElementById('rowAtDue');
+  const $rowOnDay = document.getElementById('rowOnDay');
+  const $cancelBtn = document.getElementById('cancelBtn');
+  const $submitBtn = document.getElementById('submitBtn');
 
   let tasks = loadTasks();
+  let editingId = null;
+  let pendingTimeouts = new Map();
 
   function loadTasks() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (raw) return JSON.parse(raw);
+      // migrate from v1
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) {
+        const v1 = JSON.parse(legacy);
+        return v1.map(t => ({...t, dueAt: null, remindAtDue: false, remindOnDay: false, onDayTime: '09:00'}));
+      }
+      return [];
     } catch { return []; }
   }
   function saveTasks() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }
 
+  function fmtDateTime(ms) {
+    if (!ms) return '';
+    const d = new Date(ms);
+    const opt = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return d.toLocaleString('ja-JP', opt);
+  }
+  function fmtDateOnly(ms) {
+    if (!ms) return '';
+    const d = new Date(ms);
+    return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
   function render() {
     $list.innerHTML = '';
     const sorted = [...tasks].sort((a, b) => {
       if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
+      const da = a.dueAt ?? Number.POSITIVE_INFINITY;
+      const db = b.dueAt ?? Number.POSITIVE_INFINITY;
+      if (da !== db) return da - db;
       return b.createdAt - a.createdAt;
     });
 
@@ -252,9 +432,7 @@
       empty.textContent = 'タスクはまだありません。最初の1件を追加しましょう。';
       $list.appendChild(empty);
     } else {
-      for (const task of sorted) {
-        $list.appendChild(renderTask(task));
-      }
+      for (const task of sorted) $list.appendChild(renderTask(task));
     }
 
     $clearBtn.hidden = !tasks.some(t => t.isDone);
@@ -263,6 +441,10 @@
   function renderTask(task) {
     const row = document.createElement('div');
     row.className = 'task' + (task.isDone ? ' done' : '');
+    row.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('.icon-btn')) return;
+      openEdit(task.id);
+    });
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -270,69 +452,205 @@
     cb.checked = task.isDone;
     cb.addEventListener('change', () => toggle(task.id));
 
+    const body = document.createElement('div');
+    body.className = 'task-body';
+
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.title;
+    body.appendChild(title);
+
+    if (task.dueAt) {
+      const meta = document.createElement('div');
+      meta.className = 'task-meta';
+
+      const overdue = !task.isDone && task.dueAt < Date.now();
+      const dueChip = document.createElement('span');
+      dueChip.className = 'chip' + (overdue ? ' due-overdue' : '');
+      dueChip.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4 13.5l-5-3V7h1.5v4.7l4.3 2.6z"/></svg>${fmtDateTime(task.dueAt)}`;
+      meta.appendChild(dueChip);
+
+      if (task.remindAtDue) {
+        const c = document.createElement('span');
+        c.className = 'chip';
+        c.innerHTML = `<svg viewBox="0 0 24 24"><path d="M7.6 21.7c-.4-.6-.4-1.5 0-2.1l1-1.4c.3-.4.5-1 .5-1.6V14a4 4 0 014-4v-.5a.5.5 0 011 0V10a4 4 0 014 4v2.6c0 .6.2 1.2.5 1.6l1 1.4c.4.6.4 1.5 0 2.1l-.6.8h-11l-.6-.8zM10 22h4a2 2 0 01-4 0z"/></svg>期限通知`;
+        meta.appendChild(c);
+      }
+      if (task.remindOnDay) {
+        const c = document.createElement('span');
+        c.className = 'chip';
+        c.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V11a6 6 0 00-5-5.9V4a1 1 0 10-2 0v1.1A6 6 0 006 11v5l-2 2v1h16v-1l-2-2z"/></svg>当日 ${task.onDayTime || '09:00'}`;
+        meta.appendChild(c);
+      }
+      body.appendChild(meta);
+    }
 
     const del = document.createElement('button');
     del.className = 'icon-btn';
     del.title = 'タスクを削除';
-    del.setAttribute('aria-label', 'タスクを削除');
     del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>';
-    del.addEventListener('click', () => remove(task.id));
+    del.addEventListener('click', e => { e.stopPropagation(); remove(task.id); });
 
     row.appendChild(cb);
-    row.appendChild(title);
+    row.appendChild(body);
     row.appendChild(del);
     return row;
   }
 
-  function add(title) {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    tasks.push({
-      id: Date.now() + Math.random(),
-      title: trimmed,
-      isDone: false,
-      createdAt: Date.now(),
-    });
-    saveTasks();
-    render();
+  function combinedDueAt(dateStr, timeStr) {
+    if (!dateStr) return null;
+    const t = timeStr || '00:00';
+    return new Date(`${dateStr}T${t}`).getTime();
   }
+  function dateOnlyMillis(dateStr) {
+    if (!dateStr) return null;
+    return new Date(`${dateStr}T00:00`).getTime();
+  }
+
+  function openAdd() {
+    editingId = null;
+    $sheetTitle.textContent = '新しいタスク';
+    $submitBtn.textContent = '追加';
+    $fTitle.value = '';
+    $fDate.value = '';
+    $fTime.value = '';
+    $fRemindAtDue.checked = false;
+    $fRemindOnDay.checked = false;
+    $fOnDayTime.value = '09:00';
+    refreshFormState();
+    showModal();
+    setTimeout(() => $fTitle.focus(), 50);
+  }
+  function openEdit(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    editingId = id;
+    $sheetTitle.textContent = 'タスクを編集';
+    $submitBtn.textContent = '保存';
+    $fTitle.value = task.title;
+    if (task.dueAt) {
+      const d = new Date(task.dueAt);
+      $fDate.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      $fTime.value = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    } else {
+      $fDate.value = ''; $fTime.value = '';
+    }
+    $fRemindAtDue.checked = !!task.remindAtDue;
+    $fRemindOnDay.checked = !!task.remindOnDay;
+    $fOnDayTime.value = task.onDayTime || '09:00';
+    refreshFormState();
+    showModal();
+  }
+  function showModal() { $modal.classList.add('show'); }
+  function hideModal() { $modal.classList.remove('show'); }
+
+  function refreshFormState() {
+    const hasDate = !!$fDate.value;
+    const hasDateTime = hasDate && !!$fTime.value;
+    $rowAtDue.classList.toggle('disabled', !hasDateTime);
+    $fRemindAtDue.disabled = !hasDateTime;
+    if (!hasDateTime) $fRemindAtDue.checked = false;
+    $rowOnDay.classList.toggle('disabled', !hasDate);
+    $fRemindOnDay.disabled = !hasDate;
+    if (!hasDate) $fRemindOnDay.checked = false;
+    $onDayTimeRow.hidden = !$fRemindOnDay.checked;
+    $fClearDue.hidden = !hasDate;
+    $submitBtn.disabled = $fTitle.value.trim().length === 0;
+  }
+
+  $fTitle.addEventListener('input', refreshFormState);
+  $fDate.addEventListener('input', refreshFormState);
+  $fTime.addEventListener('input', refreshFormState);
+  $fRemindOnDay.addEventListener('change', refreshFormState);
+  $fClearDue.addEventListener('click', () => {
+    $fDate.value = ''; $fTime.value = '';
+    refreshFormState();
+  });
+  $cancelBtn.addEventListener('click', hideModal);
+  $modal.addEventListener('click', e => { if (e.target === $modal) hideModal(); });
+  $addFab.addEventListener('click', openAdd);
+  $clearBtn.addEventListener('click', clearCompleted);
+
+  $submitBtn.addEventListener('click', () => {
+    const title = $fTitle.value.trim();
+    if (!title) return;
+    const dueAt = combinedDueAt($fDate.value, $fTime.value);
+    const hasDate = !!$fDate.value;
+    const data = {
+      title,
+      dueAt,
+      remindAtDue: hasDate && !!$fTime.value && $fRemindAtDue.checked,
+      remindOnDay: hasDate && $fRemindOnDay.checked,
+      onDayTime: $fOnDayTime.value || '09:00',
+    };
+    if (editingId == null) {
+      tasks.push({ id: Date.now() + Math.random(), isDone: false, createdAt: Date.now(), ...data });
+    } else {
+      tasks = tasks.map(t => t.id === editingId ? { ...t, ...data } : t);
+    }
+    saveTasks();
+    rescheduleAll();
+    hideModal();
+    render();
+  });
+
   function toggle(id) {
     const t = tasks.find(t => t.id === id);
-    if (t) { t.isDone = !t.isDone; saveTasks(); render(); }
+    if (t) { t.isDone = !t.isDone; saveTasks(); rescheduleAll(); render(); }
   }
   function remove(id) {
     tasks = tasks.filter(t => t.id !== id);
-    saveTasks();
-    render();
+    saveTasks(); rescheduleAll(); render();
   }
   function clearCompleted() {
     tasks = tasks.filter(t => !t.isDone);
-    saveTasks();
-    render();
+    saveTasks(); rescheduleAll(); render();
   }
 
-  $input.addEventListener('input', () => {
-    $addBtn.disabled = $input.value.trim().length === 0;
-  });
-  $input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      add($input.value);
-      $input.value = '';
-      $addBtn.disabled = true;
+  // Best-effort browser notifications (only fires while page is open)
+  function rescheduleAll() {
+    for (const t of pendingTimeouts.values()) clearTimeout(t);
+    pendingTimeouts.clear();
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
     }
-  });
-  $addBtn.addEventListener('click', () => {
-    add($input.value);
-    $input.value = '';
-    $addBtn.disabled = true;
-    $input.focus();
-  });
-  $clearBtn.addEventListener('click', clearCompleted);
+    if (Notification.permission !== 'granted') return;
+
+    const now = Date.now();
+    for (const task of tasks) {
+      if (task.isDone || !task.dueAt) continue;
+      if (task.remindAtDue && task.dueAt > now) {
+        scheduleNotif(task, 'AT_DUE', task.dueAt, '期限になりました');
+      }
+      if (task.remindOnDay) {
+        const day = dateOnlyMillis(new Date(task.dueAt).toISOString().slice(0,10));
+        const [h, m] = (task.onDayTime || '09:00').split(':').map(n => parseInt(n, 10));
+        const onDay = new Date(task.dueAt);
+        onDay.setHours(h, m, 0, 0);
+        if (onDay.getTime() > now) {
+          scheduleNotif(task, 'ON_DAY', onDay.getTime(), '今日が期限のタスク');
+        }
+      }
+    }
+  }
+  function scheduleNotif(task, kind, when, heading) {
+    const delay = when - Date.now();
+    if (delay > 2147483647) return; // > ~24.8 days, setTimeout limit
+    const key = `${task.id}_${kind}`;
+    const id = setTimeout(() => {
+      try {
+        new Notification(heading, {
+          body: `${task.title}（${fmtDateTime(task.dueAt)}）`,
+        });
+      } catch {}
+      pendingTimeouts.delete(key);
+    }, delay);
+    pendingTimeouts.set(key, id);
+  }
 
   render();
+  rescheduleAll();
 </script>
 </body>
 </html>
