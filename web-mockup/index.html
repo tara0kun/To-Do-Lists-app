@@ -81,6 +81,49 @@
   .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
+  .tabs {
+    display: flex;
+    background: var(--md-surface);
+    border-bottom: 1px solid var(--md-surface-variant);
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 8px;
+    border: none;
+    background: transparent;
+    color: var(--md-on-surface-variant);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: color 0.15s;
+  }
+  .tab:hover { color: var(--md-on-surface); }
+  .tab.selected { color: var(--md-primary); }
+  .tab.selected::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 12%; right: 12%;
+    height: 3px;
+    background: var(--md-primary);
+    border-radius: 3px 3px 0 0;
+  }
+  .tab .badge {
+    background: var(--md-error);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 100px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .tab.selected .badge { background: var(--md-primary); color: white; }
+
   .list {
     flex: 1;
     overflow-y: auto;
@@ -386,6 +429,12 @@
     </div>
   </header>
 
+  <div class="tabs" id="tabs">
+    <button class="tab selected" data-tab="ALL">すべて</button>
+    <button class="tab" data-tab="OVERDUE">期限切れ <span class="badge" id="badgeOverdue" hidden>0</span></button>
+    <button class="tab" data-tab="COMPLETED">完了済み <span class="badge" id="badgeCompleted" hidden>0</span></button>
+  </div>
+
   <div id="list" class="list"></div>
 
   <button class="fab" id="addFab">
@@ -504,6 +553,7 @@
   let prefs = loadPrefs();
   let editingId = null;
   let draftPriority = 'MEDIUM';
+  let selectedTab = 'ALL';
   let pendingTimeouts = new Map();
 
   function loadTasks() {
@@ -568,20 +618,39 @@
     };
   }
 
+  function counts() {
+    const now = Date.now();
+    return {
+      all: tasks.length,
+      overdue: tasks.filter(t => !t.isDone && t.dueAt != null && t.dueAt < now).length,
+      completed: tasks.filter(t => t.isDone).length,
+    };
+  }
+
   function buildSections() {
     const now = Date.now();
     const active = tasks.filter(t => !t.isDone);
     const done = tasks.filter(t => t.isDone);
-    const sortedActive = [...active].sort(comparator(prefs.sortMode));
+    const overdueActive = active.filter(t => t.dueAt != null && t.dueAt < now);
 
-    let arrangedActive = sortedActive;
-    if (prefs.overdueOnTop) {
-      const overdue = sortedActive.filter(t => t.dueAt != null && t.dueAt < now)
-        .sort((a, b) => a.dueAt - b.dueAt);
-      const others = sortedActive.filter(t => !(t.dueAt != null && t.dueAt < now));
-      arrangedActive = [...overdue, ...others];
+    if (selectedTab === 'OVERDUE') {
+      const list = [...overdueActive].sort((a, b) => a.dueAt - b.dueAt);
+      return list.length ? [{ key: 'overdue', label: null, tasks: list }] : [];
+    }
+    if (selectedTab === 'COMPLETED') {
+      const list = [...done].sort((a, b) => b.createdAt - a.createdAt);
+      return list.length ? [{ key: 'completed_only', label: null, tasks: list }] : [];
     }
 
+    // ALL tab
+    const sortedActive = [...active].sort(comparator(prefs.sortMode));
+    let arrangedActive = sortedActive;
+    if (prefs.overdueOnTop) {
+      const od = sortedActive.filter(t => t.dueAt != null && t.dueAt < now)
+        .sort((a, b) => a.dueAt - b.dueAt);
+      const others = sortedActive.filter(t => !(t.dueAt != null && t.dueAt < now));
+      arrangedActive = [...od, ...others];
+    }
     const sortedDone = [...done].sort((a, b) => b.createdAt - a.createdAt);
     if (prefs.separateCompleted) {
       const sections = [];
@@ -594,13 +663,32 @@
     }
   }
 
+  function emptyMessageFor(tab) {
+    if (tasks.length === 0) return 'タスクはまだありません。最初の1件を追加しましょう。';
+    if (tab === 'OVERDUE') return '期限切れのタスクはありません';
+    if (tab === 'COMPLETED') return '完了済みのタスクはありません';
+    return 'タスクはまだありません。最初の1件を追加しましょう。';
+  }
+
+  function refreshTabs() {
+    const c = counts();
+    document.querySelectorAll('.tab').forEach(el => {
+      el.classList.toggle('selected', el.dataset.tab === selectedTab);
+    });
+    const $bo = document.getElementById('badgeOverdue');
+    const $bc = document.getElementById('badgeCompleted');
+    $bo.textContent = c.overdue; $bo.hidden = c.overdue === 0;
+    $bc.textContent = c.completed; $bc.hidden = c.completed === 0;
+  }
+
   function render() {
+    refreshTabs();
     $list.innerHTML = '';
     const sections = buildSections();
-    if (tasks.length === 0) {
+    if (sections.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'タスクはまだありません。最初の1件を追加しましょう。';
+      empty.textContent = emptyMessageFor(selectedTab);
       $list.appendChild(empty);
     } else {
       for (const section of sections) {
@@ -779,6 +867,13 @@
   $sortModal.addEventListener('click', e => { if (e.target === $sortModal) hideModal($sortModal); });
   $addFab.addEventListener('click', openAdd);
   $clearBtn.addEventListener('click', clearCompleted);
+
+  document.querySelectorAll('.tab').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedTab = el.dataset.tab;
+      render();
+    });
+  });
 
   $sortBtn.addEventListener('click', () => {
     renderSortOptions();
