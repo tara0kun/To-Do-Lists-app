@@ -47,6 +47,22 @@ app/src/main/java/com/example/todolists/
 
 > `gradlew` 本体（バイナリ）と `gradle-wrapper.jar` はリポジトリに含まれていません。Android Studio で初回起動時に生成されるか、既存の Gradle インストールから `gradle wrapper` で生成してください。
 
+## Webモック（ブラウザでUI確認）
+
+実機/エミュレータを用意せずに見た目と挙動を確認できる、HTML/CSS/JSのみのモックを `web-mockup/index.html` に同梱しています。
+
+```bash
+# 単純に開くだけでOK
+open web-mockup/index.html        # macOS
+xdg-open web-mockup/index.html    # Linux
+
+# またはローカルサーバーで配信
+python3 -m http.server -d web-mockup 8000
+# → http://localhost:8000 をブラウザで開く
+```
+
+データはブラウザの `localStorage` に保存されます（実アプリのRoomと同等の体験）。あくまでUI/UX確認用で、Androidアプリ本体とは別物です。
+
 ## 拡張のヒント
 
 - 期日 / リマインダー追加 → `Task` に `dueAt: Long?` を追加し、WorkManager で通知
