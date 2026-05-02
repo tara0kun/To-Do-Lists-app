@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -96,33 +100,43 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             )
         },
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(padding),
         ) {
-            if (uiState.total == 0) {
-                EmptyState()
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    uiState.sections.forEach { section ->
-                        if (section.label != null) {
-                            item(key = "header_${section.key}") {
-                                SectionHeader(section.label)
+            TaskTabRow(
+                selected = uiState.selectedTab,
+                counts = uiState.counts,
+                onSelect = viewModel::selectTab,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+            ) {
+                when {
+                    uiState.total == 0 -> EmptyState(stringResource(R.string.empty_state))
+                    uiState.sections.isEmpty() -> EmptyState(uiState.emptyMessage ?: "")
+                    else -> LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        uiState.sections.forEach { section ->
+                            if (section.label != null) {
+                                item(key = "header_${section.key}") {
+                                    SectionHeader(section.label)
+                                }
                             }
-                        }
-                        items(section.tasks, key = { "${section.key}_${it.id}" }) { task ->
-                            TaskRow(
-                                task = task,
-                                onToggle = { viewModel.toggle(task) },
-                                onDelete = { viewModel.delete(task) },
-                                onClick = { editingTask = task },
-                            )
+                            items(section.tasks, key = { "${section.key}_${it.id}" }) { task ->
+                                TaskRow(
+                                    task = task,
+                                    onToggle = { viewModel.toggle(task) },
+                                    onDelete = { viewModel.delete(task) },
+                                    onClick = { editingTask = task },
+                                )
+                            }
                         }
                     }
                 }
@@ -310,13 +324,44 @@ private fun PriorityDot(priority: Priority) {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(message: String) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = stringResource(R.string.empty_state),
+            text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun TaskTabRow(
+    selected: TaskTab,
+    counts: TabCounts,
+    onSelect: (TaskTab) -> Unit,
+) {
+    val tabs = TaskTab.values()
+    TabRow(selectedTabIndex = tabs.indexOf(selected)) {
+        tabs.forEach { tab ->
+            val count = when (tab) {
+                TaskTab.ALL -> counts.all
+                TaskTab.OVERDUE -> counts.overdue
+                TaskTab.COMPLETED -> counts.completed
+            }
+            Tab(
+                selected = selected == tab,
+                onClick = { onSelect(tab) },
+                text = {
+                    if (count > 0 && tab != TaskTab.ALL) {
+                        BadgedBox(badge = { Badge { Text(count.toString()) } }) {
+                            Text(tab.label, modifier = Modifier.padding(end = 6.dp))
+                        }
+                    } else {
+                        Text(tab.label)
+                    }
+                },
+            )
+        }
     }
 }
 
