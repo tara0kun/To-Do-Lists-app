@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.ToDoListsApp" parent="android:Theme.Material.NoActionBar" />
+
+    <style name="Theme.QuickAdd" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:windowSoftInputMode">stateVisible|adjustResize</item>
+    </style>
 </resources>

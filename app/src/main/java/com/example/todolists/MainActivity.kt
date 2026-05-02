@@ -68,11 +68,13 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_TAB = "open_tab"
 
-        fun intentForSimpleTab(context: Context): Intent =
+        fun intentForTab(context: Context, tab: TaskTab): Intent =
             Intent(context, MainActivity::class.java).apply {
                 action = Intent.ACTION_MAIN
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-                putExtra(EXTRA_OPEN_TAB, TaskTab.SIMPLE.name)
+                putExtra(EXTRA_OPEN_TAB, tab.name)
             }
+
+        fun intentForSimpleTab(context: Context): Intent = intentForTab(context, TaskTab.SIMPLE)
     }
 }

@@ -2,6 +2,9 @@ package com.example.todolists.data
 
 import android.content.Context
 import com.example.todolists.notifications.ReminderScheduler
+import com.example.todolists.widget.AllTasksWidget
+import com.example.todolists.widget.CompletedWidget
+import com.example.todolists.widget.OverdueWidget
 import com.example.todolists.widget.SimpleListWidget
 import kotlinx.coroutines.flow.Flow
 
@@ -35,6 +38,7 @@ class TaskRepository(
             )
         )
         dao.findById(id)?.let { scheduler.schedule(it) }
+        refreshWidgets()
         return id
     }
 
@@ -55,7 +59,7 @@ class TaskRepository(
         } else task
         dao.update(sanitized)
         if (!sanitized.isDone) scheduler.schedule(sanitized)
-        if (sanitized.isSimple) refreshWidgets()
+        refreshWidgets()
     }
 
     suspend fun toggle(task: Task) = update(task.copy(isDone = !task.isDone))
@@ -63,14 +67,14 @@ class TaskRepository(
     suspend fun delete(task: Task) {
         scheduler.cancel(task.id)
         dao.delete(task)
-        if (task.isSimple) refreshWidgets()
+        refreshWidgets()
     }
 
     suspend fun clearCompleted() {
         val completed = dao.completed()
         completed.forEach { scheduler.cancel(it.id) }
         dao.deleteCompleted()
-        if (completed.any { it.isSimple }) refreshWidgets()
+        refreshWidgets()
     }
 
     suspend fun rescheduleAll() {
@@ -79,6 +83,9 @@ class TaskRepository(
 
     private suspend fun refreshWidgets() {
         runCatching { SimpleListWidget().updateAll(context) }
+        runCatching { AllTasksWidget().updateAll(context) }
+        runCatching { OverdueWidget().updateAll(context) }
+        runCatching { CompletedWidget().updateAll(context) }
     }
 
     companion object {
