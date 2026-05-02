@@ -124,6 +124,42 @@
   }
   .tab.selected .badge { background: var(--md-primary); color: white; }
 
+  .quick-add {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--md-surface-variant);
+  }
+  .quick-add input {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1px solid var(--md-outline);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--md-on-surface);
+    font-size: 16px;
+    outline: none;
+  }
+  .quick-add input:focus { border-color: var(--md-primary); border-width: 2px; padding: 11px 13px; }
+  .quick-add-btn {
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .quick-add-btn:hover:not(:disabled) { filter: brightness(0.95); }
+  .quick-add-btn:active:not(:disabled) { transform: scale(0.97); }
+  .quick-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .quick-add-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
   .list {
     flex: 1;
     overflow-y: auto;
@@ -431,8 +467,16 @@
 
   <div class="tabs" id="tabs">
     <button class="tab selected" data-tab="ALL">すべて</button>
+    <button class="tab" data-tab="SIMPLE">簡易 <span class="badge" id="badgeSimple" hidden>0</span></button>
     <button class="tab" data-tab="OVERDUE">期限切れ <span class="badge" id="badgeOverdue" hidden>0</span></button>
     <button class="tab" data-tab="COMPLETED">完了済み <span class="badge" id="badgeCompleted" hidden>0</span></button>
+  </div>
+
+  <div id="quickAddRow" class="quick-add" hidden>
+    <input type="text" id="quickInput" placeholder="買い物・やる事などを入力" autocomplete="off" />
+    <button id="quickAddBtn" class="quick-add-btn" disabled aria-label="追加">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
   </div>
 
   <div id="list" class="list"></div>
@@ -517,9 +561,9 @@
 </div>
 
 <script>
-  const STORAGE_KEY = 'todo-mock-tasks-v3';
+  const STORAGE_KEY = 'todo-mock-tasks-v4';
   const PREFS_KEY = 'todo-mock-prefs-v1';
-  const LEGACY_KEYS = ['todo-mock-tasks-v2', 'todo-mock-tasks-v1'];
+  const LEGACY_KEYS = ['todo-mock-tasks-v3', 'todo-mock-tasks-v2', 'todo-mock-tasks-v1'];
 
   const PRIORITIES = [
     { key: 'HIGH',    label: '高',          dot: 'high',    rank: 3 },
@@ -561,6 +605,9 @@
   const $fSeparateCompleted = document.getElementById('fSeparateCompleted');
   const $fOverdueOnTop = document.getElementById('fOverdueOnTop');
   const $sortDoneBtn = document.getElementById('sortDoneBtn');
+  const $quickAddRow = document.getElementById('quickAddRow');
+  const $quickInput = document.getElementById('quickInput');
+  const $quickAddBtn = document.getElementById('quickAddBtn');
 
   let tasks = loadTasks();
   let prefs = loadPrefs();
@@ -580,6 +627,7 @@
           return arr.map(t => ({
             dueAt: null, remindAtDue: false, remindOnDay: false, onDayTime: '09:00',
             priority: 'MEDIUM',
+            isSimple: false,
             ...t,
           }));
         }
@@ -633,19 +681,32 @@
 
   function counts() {
     const now = Date.now();
+    const detailed = tasks.filter(t => !t.isSimple);
+    const simple = tasks.filter(t => t.isSimple);
     return {
-      all: tasks.length,
-      overdue: tasks.filter(t => !t.isDone && t.dueAt != null && t.dueAt < now).length,
-      completed: tasks.filter(t => t.isDone).length,
+      all: detailed.length,
+      simple: simple.length,
+      overdue: detailed.filter(t => !t.isDone && t.dueAt != null && t.dueAt < now).length,
+      completed: detailed.filter(t => t.isDone).length,
     };
   }
 
   function buildSections() {
     const now = Date.now();
-    const active = tasks.filter(t => !t.isDone);
-    const done = tasks.filter(t => t.isDone);
+    const detailed = tasks.filter(t => !t.isSimple);
+    const simple = tasks.filter(t => t.isSimple);
+    const active = detailed.filter(t => !t.isDone);
+    const done = detailed.filter(t => t.isDone);
     const overdueActive = active.filter(t => t.dueAt != null && t.dueAt < now);
 
+    if (selectedTab === 'SIMPLE') {
+      const sActive = [...simple].filter(t => !t.isDone).sort((a, b) => b.createdAt - a.createdAt);
+      const sDone = [...simple].filter(t => t.isDone).sort((a, b) => b.createdAt - a.createdAt);
+      const sections = [];
+      if (sActive.length) sections.push({ key: 'simple_active', label: null, tasks: sActive });
+      if (sDone.length) sections.push({ key: 'simple_done', label: `完了済み (${sDone.length})`, tasks: sDone });
+      return sections;
+    }
     if (selectedTab === 'OVERDUE') {
       const list = [...overdueActive].sort((a, b) => a.dueAt - b.dueAt);
       return list.length ? [{ key: 'overdue', label: null, tasks: list }] : [];
@@ -655,7 +716,7 @@
       return list.length ? [{ key: 'completed_only', label: null, tasks: list }] : [];
     }
 
-    // ALL tab
+    // ALL tab (detailed only)
     const sortedActive = [...active].sort(comparator(prefs.sortMode));
     let arrangedActive = sortedActive;
     if (prefs.overdueOnTop) {
@@ -677,9 +738,13 @@
   }
 
   function emptyMessageFor(tab) {
-    if (tasks.length === 0) return 'タスクはまだありません。最初の1件を追加しましょう。';
+    if (tab === 'SIMPLE') return '簡易リストは空です。上の入力欄から追加できます。';
     if (tab === 'OVERDUE') return '期限切れのタスクはありません';
     if (tab === 'COMPLETED') return '完了済みのタスクはありません';
+    if (tab === 'ALL') {
+      const detailed = tasks.filter(t => !t.isSimple);
+      if (detailed.length === 0) return '詳細タスクはまだありません。右下のボタンから追加できます。';
+    }
     return 'タスクはまだありません。最初の1件を追加しましょう。';
   }
 
@@ -688,10 +753,14 @@
     document.querySelectorAll('.tab').forEach(el => {
       el.classList.toggle('selected', el.dataset.tab === selectedTab);
     });
+    const $bs = document.getElementById('badgeSimple');
     const $bo = document.getElementById('badgeOverdue');
     const $bc = document.getElementById('badgeCompleted');
+    $bs.textContent = c.simple; $bs.hidden = c.simple === 0;
     $bo.textContent = c.overdue; $bo.hidden = c.overdue === 0;
     $bc.textContent = c.completed; $bc.hidden = c.completed === 0;
+    $quickAddRow.hidden = selectedTab !== 'SIMPLE';
+    $addFab.hidden = selectedTab === 'SIMPLE';
   }
 
   function render() {
@@ -720,12 +789,14 @@
   function renderTask(task) {
     const meta = priorityMeta(task.priority || 'MEDIUM');
     const row = document.createElement('div');
-    const isHigh = (task.priority || 'MEDIUM') === 'HIGH';
+    const isHigh = !task.isSimple && (task.priority || 'MEDIUM') === 'HIGH';
     row.className = 'task' + (task.isDone ? ' done' : '') + (isHigh ? ' high' : '');
-    row.addEventListener('click', e => {
-      if (e.target.tagName === 'INPUT' || e.target.closest('.icon-btn')) return;
-      openEdit(task.id);
-    });
+    if (!task.isSimple) {
+      row.addEventListener('click', e => {
+        if (e.target.tagName === 'INPUT' || e.target.closest('.icon-btn')) return;
+        openEdit(task.id);
+      });
+    }
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -738,17 +809,19 @@
 
     const titleRow = document.createElement('div');
     titleRow.className = 'task-title-row';
-    const dot = document.createElement('span');
-    dot.className = 'priority-dot ' + meta.dot;
-    dot.title = `重要度: ${meta.label}`;
+    if (!task.isSimple) {
+      const dot = document.createElement('span');
+      dot.className = 'priority-dot ' + meta.dot;
+      dot.title = `重要度: ${meta.label}`;
+      titleRow.appendChild(dot);
+    }
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.title;
-    titleRow.appendChild(dot);
     titleRow.appendChild(title);
     body.appendChild(titleRow);
 
-    if (task.dueAt) {
+    if (!task.isSimple && task.dueAt) {
       const metaEl = document.createElement('div');
       metaEl.className = 'task-meta';
       const overdue = !task.isDone && task.dueAt < Date.now();
@@ -891,8 +964,37 @@
     el.addEventListener('click', () => {
       selectedTab = el.dataset.tab;
       render();
+      if (selectedTab === 'SIMPLE') setTimeout(() => $quickInput.focus(), 50);
     });
   });
+
+  function quickAdd() {
+    const t = $quickInput.value.trim();
+    if (!t) return;
+    tasks.push({
+      id: Date.now() + Math.random(),
+      title: t,
+      isDone: false,
+      createdAt: Date.now(),
+      isSimple: true,
+      priority: 'MEDIUM',
+      dueAt: null,
+      remindAtDue: false,
+      remindOnDay: false,
+      onDayTime: '09:00',
+    });
+    saveTasks();
+    $quickInput.value = '';
+    $quickAddBtn.disabled = true;
+    render();
+  }
+  $quickInput.addEventListener('input', () => {
+    $quickAddBtn.disabled = $quickInput.value.trim().length === 0;
+  });
+  $quickInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); quickAdd(); }
+  });
+  $quickAddBtn.addEventListener('click', quickAdd);
 
   $sortBtn.addEventListener('click', () => {
     renderSortOptions();

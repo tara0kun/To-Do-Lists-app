@@ -15,6 +15,7 @@ data class Task(
     val remindOnDayHour: Int = 9,
     val remindOnDayMinute: Int = 0,
     val priority: Int = Priority.MEDIUM.storageValue,
+    val isSimple: Boolean = false,
 ) {
     val priorityEnum: Priority get() = Priority.fromStorage(priority)
 }
