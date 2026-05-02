@@ -2,9 +2,11 @@ package com.example.todolists.data
 
 import android.content.Context
 import com.example.todolists.notifications.ReminderScheduler
+import com.example.todolists.widget.SimpleListWidget
 import kotlinx.coroutines.flow.Flow
 
 class TaskRepository(
+    private val context: Context,
     private val dao: TaskDao,
     private val scheduler: ReminderScheduler,
 ) {
@@ -39,8 +41,12 @@ class TaskRepository(
     suspend fun addSimple(title: String): Long {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return -1L
-        return dao.insert(Task(title = trimmed, isSimple = true))
+        val id = dao.insert(Task(title = trimmed, isSimple = true))
+        refreshWidgets()
+        return id
     }
+
+    suspend fun findById(id: Long): Task? = dao.findById(id)
 
     suspend fun update(task: Task) {
         scheduler.cancel(task.id)
@@ -49,6 +55,7 @@ class TaskRepository(
         } else task
         dao.update(sanitized)
         if (!sanitized.isDone) scheduler.schedule(sanitized)
+        if (sanitized.isSimple) refreshWidgets()
     }
 
     suspend fun toggle(task: Task) = update(task.copy(isDone = !task.isDone))
@@ -56,24 +63,33 @@ class TaskRepository(
     suspend fun delete(task: Task) {
         scheduler.cancel(task.id)
         dao.delete(task)
+        if (task.isSimple) refreshWidgets()
     }
 
     suspend fun clearCompleted() {
-        dao.completed().forEach { scheduler.cancel(it.id) }
+        val completed = dao.completed()
+        completed.forEach { scheduler.cancel(it.id) }
         dao.deleteCompleted()
+        if (completed.any { it.isSimple }) refreshWidgets()
     }
 
     suspend fun rescheduleAll() {
         dao.activeRemindable().forEach { scheduler.schedule(it) }
     }
 
+    private suspend fun refreshWidgets() {
+        runCatching { SimpleListWidget().updateAll(context) }
+    }
+
     companion object {
         @Volatile private var INSTANCE: TaskRepository? = null
         fun get(context: Context): TaskRepository =
             INSTANCE ?: synchronized(this) {
+                val app = context.applicationContext
                 INSTANCE ?: TaskRepository(
-                    dao = TaskDatabase.get(context).taskDao(),
-                    scheduler = ReminderScheduler(context.applicationContext),
+                    context = app,
+                    dao = TaskDatabase.get(app).taskDao(),
+                    scheduler = ReminderScheduler(app),
                 ).also { INSTANCE = it }
             }
     }
