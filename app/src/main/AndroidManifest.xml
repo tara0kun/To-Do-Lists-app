@@ -52,6 +52,50 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/simple_list_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".widget.AllTasksWidgetReceiver"
+            android:exported="true"
+            android:label="すべてのタスク">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/all_tasks_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.OverdueWidgetReceiver"
+            android:exported="true"
+            android:label="期限切れ">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/overdue_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.CompletedWidgetReceiver"
+            android:exported="true"
+            android:label="完了済み">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/completed_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".widget.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QuickAdd"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTask" />
     </application>
 
 </manifest>

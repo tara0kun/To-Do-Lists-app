@@ -6,7 +6,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import com.example.todolists.data.TaskRepository
 
-class ToggleSimpleTaskAction : ActionCallback {
+class ToggleTaskAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
         glanceId: GlanceId,
