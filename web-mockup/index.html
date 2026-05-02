@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ToDo（Webモック）</title>
+<style>
+  :root {
+    --md-primary: #6750A4;
+    --md-primary-container: #EADDFF;
+    --md-on-primary-container: #21005D;
+    --md-surface: #FFFBFE;
+    --md-surface-variant: #E7E0EC;
+    --md-on-surface: #1C1B1F;
+    --md-on-surface-variant: #49454F;
+    --md-outline: #79747E;
+    --radius: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --md-primary: #D0BCFF;
+      --md-primary-container: #4F378B;
+      --md-on-primary-container: #EADDFF;
+      --md-surface: #1C1B1F;
+      --md-surface-variant: #49454F;
+      --md-on-surface: #E6E1E5;
+      --md-on-surface-variant: #CAC4D0;
+      --md-outline: #938F99;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--md-surface);
+    color: var(--md-on-surface);
+    font-family: "Roboto", "Helvetica Neue", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  }
+  .phone {
+    max-width: 420px;
+    margin: 24px auto;
+    min-height: calc(100vh - 48px);
+    background: var(--md-surface);
+    border-radius: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0;
+  }
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover { background: rgba(0,0,0,0.06); }
+  .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    padding: 16px 16px 8px;
+    align-items: center;
+  }
+  .input-field {
+    flex: 1;
+    position: relative;
+  }
+  .input-field input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--md-outline);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--md-on-surface);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input-field input:focus { border-color: var(--md-primary); border-width: 2px; padding: 13px 15px; }
+
+  .add-btn {
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .add-btn:hover:not(:disabled) { filter: brightness(0.95); }
+  .add-btn:active:not(:disabled) { transform: scale(0.96); }
+  .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .add-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+  .list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .task {
+    display: flex;
+    align-items: center;
+    background: var(--md-surface);
+    border: 1px solid var(--md-surface-variant);
+    border-radius: var(--radius);
+    padding: 6px 8px 6px 4px;
+    box-shadow: var(--shadow);
+    animation: pop 0.18s ease-out;
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .checkbox {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--md-outline);
+    border-radius: 4px;
+    margin: 0 12px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .checkbox:checked {
+    background: var(--md-primary);
+    border-color: var(--md-primary);
+  }
+  .checkbox:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .task-title {
+    flex: 1;
+    font-size: 16px;
+    word-break: break-word;
+    padding: 8px 4px;
+  }
+  .task.done .task-title {
+    text-decoration: line-through;
+    font-style: italic;
+    color: var(--md-on-surface-variant);
+  }
+  .empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--md-on-surface-variant);
+    text-align: center;
+    padding: 32px;
+  }
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--md-on-surface-variant);
+    padding: 8px 16px 16px;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <h1>ToDo</h1>
+    <button id="clearBtn" class="icon-btn" title="完了済みを削除" aria-label="完了済みを削除" hidden>
+      <svg viewBox="0 0 24 24"><path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3zM14 5h-3l-1-1H6L5 5H2v2h12z"/></svg>
+    </button>
+  </header>
+
+  <div class="input-row">
+    <div class="input-field">
+      <input id="titleInput" type="text" placeholder="新しいタスクを入力" autocomplete="off" />
+    </div>
+    <button id="addBtn" class="add-btn" title="タスクを追加" aria-label="タスクを追加" disabled>
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+    </button>
+  </div>
+
+  <div id="list" class="list"></div>
+
+  <div class="footer-note">Webモック · データはこのブラウザにのみ保存されます</div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'todo-mock-tasks-v1';
+  const $list = document.getElementById('list');
+  const $input = document.getElementById('titleInput');
+  const $addBtn = document.getElementById('addBtn');
+  const $clearBtn = document.getElementById('clearBtn');
+
+  let tasks = loadTasks();
+
+  function loadTasks() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+  function saveTasks() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  function render() {
+    $list.innerHTML = '';
+    const sorted = [...tasks].sort((a, b) => {
+      if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
+      return b.createdAt - a.createdAt;
+    });
+
+    if (sorted.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'タスクはまだありません。最初の1件を追加しましょう。';
+      $list.appendChild(empty);
+    } else {
+      for (const task of sorted) {
+        $list.appendChild(renderTask(task));
+      }
+    }
+
+    $clearBtn.hidden = !tasks.some(t => t.isDone);
+  }
+
+  function renderTask(task) {
+    const row = document.createElement('div');
+    row.className = 'task' + (task.isDone ? ' done' : '');
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'checkbox';
+    cb.checked = task.isDone;
+    cb.addEventListener('change', () => toggle(task.id));
+
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = task.title;
+
+    const del = document.createElement('button');
+    del.className = 'icon-btn';
+    del.title = 'タスクを削除';
+    del.setAttribute('aria-label', 'タスクを削除');
+    del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>';
+    del.addEventListener('click', () => remove(task.id));
+
+    row.appendChild(cb);
+    row.appendChild(title);
+    row.appendChild(del);
+    return row;
+  }
+
+  function add(title) {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    tasks.push({
+      id: Date.now() + Math.random(),
+      title: trimmed,
+      isDone: false,
+      createdAt: Date.now(),
+    });
+    saveTasks();
+    render();
+  }
+  function toggle(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.isDone = !t.isDone; saveTasks(); render(); }
+  }
+  function remove(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    render();
+  }
+  function clearCompleted() {
+    tasks = tasks.filter(t => !t.isDone);
+    saveTasks();
+    render();
+  }
+
+  $input.addEventListener('input', () => {
+    $addBtn.disabled = $input.value.trim().length === 0;
+  });
+  $input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      add($input.value);
+      $input.value = '';
+      $addBtn.disabled = true;
+    }
+  });
+  $addBtn.addEventListener('click', () => {
+    add($input.value);
+    $input.value = '';
+    $addBtn.disabled = true;
+    $input.focus();
+  });
+  $clearBtn.addEventListener('click', clearCompleted);
+
+  render();
+</script>
+</body>
+</html>
