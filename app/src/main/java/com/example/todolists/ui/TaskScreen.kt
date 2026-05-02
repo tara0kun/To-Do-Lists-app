@@ -1,5 +1,6 @@
 package com.example.todolists.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,10 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -20,6 +24,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,14 +43,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.todolists.R
 import com.example.todolists.calendar.CalendarIntegration
+import com.example.todolists.data.Priority
 import com.example.todolists.data.Task
 import java.text.DateFormat
 import java.util.Date
@@ -54,9 +63,10 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
-    val tasks by viewModel.tasks.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showAddSheet by remember { mutableStateOf(false) }
+    var showSortSheet by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
 
     Scaffold(
@@ -64,7 +74,10 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    if (tasks.any { it.isDone }) {
+                    IconButton(onClick = { showSortSheet = true }) {
+                        Icon(Icons.Filled.Sort, contentDescription = "並び替え")
+                    }
+                    if (uiState.hasCompleted) {
                         IconButton(onClick = viewModel::clearCompleted) {
                             Icon(
                                 Icons.Filled.DeleteSweep,
@@ -89,21 +102,28 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                 .padding(padding)
                 .padding(horizontal = 16.dp),
         ) {
-            if (tasks.isEmpty()) {
+            if (uiState.total == 0) {
                 EmptyState()
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(tasks, key = { it.id }) { task ->
-                        TaskRow(
-                            task = task,
-                            onToggle = { viewModel.toggle(task) },
-                            onDelete = { viewModel.delete(task) },
-                            onClick = { editingTask = task },
-                        )
+                    uiState.sections.forEach { section ->
+                        if (section.label != null) {
+                            item(key = "header_${section.key}") {
+                                SectionHeader(section.label)
+                            }
+                        }
+                        items(section.tasks, key = { "${section.key}_${it.id}" }) { task ->
+                            TaskRow(
+                                task = task,
+                                onToggle = { viewModel.toggle(task) },
+                                onDelete = { viewModel.delete(task) },
+                                onClick = { editingTask = task },
+                            )
+                        }
                     }
                 }
             }
@@ -121,6 +141,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                     remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
                     remindOnDayHour = draft.onDayHour,
                     remindOnDayMinute = draft.onDayMinute,
+                    priority = draft.priority.storageValue,
                 )
                 if (draft.addToCalendar && draft.combinedDueAt != null) {
                     CalendarIntegration.openInsertEvent(
@@ -152,6 +173,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                     remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
                     remindOnDayHour = draft.onDayHour,
                     remindOnDayMinute = draft.onDayMinute,
+                    priority = draft.priority.storageValue,
                 )
                 viewModel.update(updated)
                 if (draft.addToCalendar && updated.dueAt != null) {
@@ -161,6 +183,26 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             submitLabel = "保存",
         )
     }
+
+    if (showSortSheet) {
+        SortOptionsSheet(
+            preferences = uiState.preferences,
+            onDismiss = { showSortSheet = false },
+            onSortModeChange = viewModel::setSortMode,
+            onSeparateCompletedChange = viewModel::setSeparateCompleted,
+            onOverdueOnTopChange = viewModel::setOverdueOnTop,
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+    )
 }
 
 @Composable
@@ -170,6 +212,9 @@ private fun TaskRow(
     onDelete: () -> Unit,
     onClick: () -> Unit,
 ) {
+    val now = remember { System.currentTimeMillis() }
+    val overdue = !task.isDone && task.dueAt != null && task.dueAt < now
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,37 +228,47 @@ private fun TaskRow(
         ) {
             Checkbox(checked = task.isDone, onCheckedChange = { onToggle() })
             Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
-                Text(
-                    text = task.title,
-                    style = if (task.isDone) {
-                        MaterialTheme.typography.bodyLarge.copy(
-                            textDecoration = TextDecoration.LineThrough,
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        MaterialTheme.typography.bodyLarge
-                    },
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PriorityDot(task.priorityEnum)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = task.title,
+                        style = if (task.isDone) {
+                            MaterialTheme.typography.bodyLarge.copy(
+                                textDecoration = TextDecoration.LineThrough,
+                                fontStyle = FontStyle.Italic,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = if (task.priorityEnum == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                        },
+                    )
+                }
                 if (task.dueAt != null) {
-                    Spacer(Modifier.width(2.dp))
+                    Spacer(Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Filled.Schedule,
                             contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp),
+                            modifier = Modifier
+                                .size(14.dp)
+                                .padding(end = 4.dp),
+                            tint = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             text = formatDueAt(task.dueAt),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (task.remindAtDue) {
                             Spacer(Modifier.width(8.dp))
                             Icon(
                                 Icons.Filled.NotificationsActive,
                                 contentDescription = "期限時刻に通知",
-                                modifier = Modifier.padding(end = 2.dp),
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         if (task.remindOnDay) {
@@ -221,6 +276,8 @@ private fun TaskRow(
                             Icon(
                                 Icons.Filled.Notifications,
                                 contentDescription = "当日に通知",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -234,6 +291,22 @@ private fun TaskRow(
             }
         }
     }
+}
+
+@Composable
+private fun PriorityDot(priority: Priority) {
+    val color = when (priority) {
+        Priority.HIGH -> Color(0xFFE53935)
+        Priority.MEDIUM -> Color(0xFFF9A825)
+        Priority.LOW -> Color(0xFF43A047)
+        Priority.SOMEDAY -> MaterialTheme.colorScheme.outline
+    }
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(color),
+    )
 }
 
 @Composable

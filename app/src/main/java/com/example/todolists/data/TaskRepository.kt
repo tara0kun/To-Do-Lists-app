@@ -17,6 +17,7 @@ class TaskRepository(
         remindOnDay: Boolean = false,
         remindOnDayHour: Int = 9,
         remindOnDayMinute: Int = 0,
+        priority: Int = Priority.MEDIUM.storageValue,
     ): Long {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return -1L
@@ -28,6 +29,7 @@ class TaskRepository(
                 remindOnDay = remindOnDay && dueAt != null,
                 remindOnDayHour = remindOnDayHour,
                 remindOnDayMinute = remindOnDayMinute,
+                priority = priority,
             )
         )
         dao.findById(id)?.let { scheduler.schedule(it) }

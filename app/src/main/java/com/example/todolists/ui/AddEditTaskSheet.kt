@@ -39,6 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.example.todolists.data.Priority
 import com.example.todolists.data.Task
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -56,6 +61,7 @@ data class TaskDraft(
     val remindOnDay: Boolean = false,
     val onDayHour: Int = 9,
     val onDayMinute: Int = 0,
+    val priority: Priority = Priority.DEFAULT,
     val addToCalendar: Boolean = false,
 ) {
     val combinedDueAt: Long?
@@ -83,6 +89,7 @@ fun Task.toDraft(): TaskDraft {
         remindOnDay = remindOnDay,
         onDayHour = remindOnDayHour,
         onDayMinute = remindOnDayMinute,
+        priority = priorityEnum,
     )
 }
 
@@ -133,6 +140,12 @@ fun AddEditTaskSheet(
                 label = { Text("タイトル") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+            )
+
+            Text("重要度", style = MaterialTheme.typography.titleSmall)
+            PrioritySelector(
+                selected = draft.priority,
+                onSelect = { draft = draft.copy(priority = it) },
             )
 
             Text("期限（任意）", style = MaterialTheme.typography.titleSmall)
@@ -298,6 +311,28 @@ fun AddEditTaskSheet(
                 showOnDayTimePicker = false
             },
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PrioritySelector(
+    selected: Priority,
+    onSelect: (Priority) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Priority.values().forEach { p ->
+            FilterChip(
+                selected = selected == p,
+                onClick = { onSelect(p) },
+                label = { Text(p.label) },
+                colors = FilterChipDefaults.filterChipColors(),
+            )
+        }
     }
 }
 
