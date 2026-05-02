@@ -1,6 +1,8 @@
 package com.example.todolists
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,15 +10,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.todolists.notifications.NotificationChannels
 import com.example.todolists.ui.TaskScreen
+import com.example.todolists.ui.TaskTab
+import com.example.todolists.ui.TaskViewModel
 import com.example.todolists.ui.theme.ToDoListsAppTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: TaskViewModel by viewModels()
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result is informational */ }
@@ -26,14 +33,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         NotificationChannels.ensureCreated(this)
         ensureNotificationPermission()
+        applyOpenTabExtra(intent)
 
         setContent {
             ToDoListsAppTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TaskScreen()
+                    TaskScreen(viewModel = viewModel)
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        applyOpenTabExtra(intent)
+    }
+
+    private fun applyOpenTabExtra(intent: Intent?) {
+        val name = intent?.getStringExtra(EXTRA_OPEN_TAB) ?: return
+        val tab = runCatching { TaskTab.valueOf(name) }.getOrNull() ?: return
+        viewModel.selectTab(tab)
     }
 
     private fun ensureNotificationPermission() {
@@ -44,5 +63,16 @@ class MainActivity : ComponentActivity() {
         if (!granted) {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_TAB = "open_tab"
+
+        fun intentForSimpleTab(context: Context): Intent =
+            Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                putExtra(EXTRA_OPEN_TAB, TaskTab.SIMPLE.name)
+            }
     }
 }

@@ -40,6 +40,18 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".widget.SimpleListWidgetReceiver"
+            android:exported="true"
+            android:label="簡易リスト">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/simple_list_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

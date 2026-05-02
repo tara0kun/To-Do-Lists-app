@@ -5,4 +5,6 @@
     <string name="delete_task">タスクを削除</string>
     <string name="clear_completed">完了済みを削除</string>
     <string name="empty_state">タスクはまだありません。最初の1件を追加しましょう。</string>
+    <string name="simple_widget_description">簡易リストの未完了アイテムをホーム画面に表示</string>
+    <string name="widget_loading">読み込み中…</string>
 </resources>
