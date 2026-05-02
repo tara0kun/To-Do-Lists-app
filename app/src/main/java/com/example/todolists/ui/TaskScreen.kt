@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -33,7 +36,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -69,14 +74,17 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
     var showAddSheet by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
+    val isSimpleTab = uiState.selectedTab == TaskTab.SIMPLE
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = { showSortSheet = true }) {
-                        Icon(Icons.Filled.Sort, contentDescription = "並び替え")
+                    if (!isSimpleTab) {
+                        IconButton(onClick = { showSortSheet = true }) {
+                            Icon(Icons.Filled.Sort, contentDescription = "並び替え")
+                        }
                     }
                     if (uiState.hasCompleted) {
                         IconButton(onClick = viewModel::clearCompleted) {
@@ -90,11 +98,13 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddSheet = true },
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.add_task)) },
-            )
+            if (!isSimpleTab) {
+                ExtendedFloatingActionButton(
+                    onClick = { showAddSheet = true },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.add_task)) },
+                )
+            }
         },
     ) { padding ->
         Column(
@@ -107,17 +117,20 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                 counts = uiState.counts,
                 onSelect = viewModel::selectTab,
             )
+            if (isSimpleTab) {
+                SimpleQuickAddRow(onAdd = viewModel::addSimple)
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
             ) {
                 when {
-                    uiState.total == 0 -> EmptyState(stringResource(R.string.empty_state))
+                    uiState.total == 0 && !isSimpleTab -> EmptyState(stringResource(R.string.empty_state))
                     uiState.sections.isEmpty() -> EmptyState(uiState.emptyMessage ?: "")
                     else -> LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
+                        contentPadding = PaddingValues(top = 12.dp, bottom = if (isSimpleTab) 24.dp else 96.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         uiState.sections.forEach { section ->
@@ -131,7 +144,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                                     task = task,
                                     onToggle = { viewModel.toggle(task) },
                                     onDelete = { viewModel.delete(task) },
-                                    onClick = { editingTask = task },
+                                    onClick = { if (!task.isSimple) editingTask = task },
                                 )
                             }
                         }
@@ -225,8 +238,10 @@ private fun TaskRow(
             Checkbox(checked = task.isDone, onCheckedChange = { onToggle() })
             Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    PriorityDot(task.priorityEnum)
-                    Spacer(Modifier.width(8.dp))
+                    if (!task.isSimple) {
+                        PriorityDot(task.priorityEnum)
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text(
                         text = task.title,
                         style = if (task.isDone) {
@@ -237,12 +252,12 @@ private fun TaskRow(
                             )
                         } else {
                             MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = if (task.priorityEnum == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
+                                fontWeight = if (!task.isSimple && task.priorityEnum == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
                             )
                         },
                     )
                 }
-                if (task.dueAt != null) {
+                if (!task.isSimple && task.dueAt != null) {
                     Spacer(Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -327,6 +342,7 @@ private fun TaskTabRow(
         tabs.forEach { tab ->
             val count = when (tab) {
                 TaskTab.ALL -> counts.all
+                TaskTab.SIMPLE -> counts.simple
                 TaskTab.OVERDUE -> counts.overdue
                 TaskTab.COMPLETED -> counts.completed
             }
@@ -343,6 +359,38 @@ private fun TaskTabRow(
                     }
                 },
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SimpleQuickAddRow(onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    fun submit() {
+        if (text.isNotBlank()) {
+            onAdd(text)
+            text = ""
+        }
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            placeholder = { Text("買い物・やる事などを入力") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        FilledIconButton(onClick = ::submit, enabled = text.isNotBlank()) {
+            Icon(Icons.Filled.Send, contentDescription = "追加")
         }
     }
 }

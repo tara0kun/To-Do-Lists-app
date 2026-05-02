@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 
 enum class TaskTab(val label: String) {
     ALL("すべて"),
+    SIMPLE("簡易"),
     OVERDUE("期限切れ"),
     COMPLETED("完了済み"),
 }
@@ -31,6 +32,7 @@ data class TaskListSection(
 
 data class TabCounts(
     val all: Int = 0,
+    val simple: Int = 0,
     val overdue: Int = 0,
     val completed: Int = 0,
 )
@@ -80,6 +82,8 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         repository.add(title, dueAt, remindAtDue, remindOnDay, remindOnDayHour, remindOnDayMinute, priority)
     }
 
+    fun addSimple(title: String) = viewModelScope.launch { repository.addSimple(title) }
+
     fun update(task: Task) = viewModelScope.launch { repository.update(task) }
     fun toggle(task: Task) = viewModelScope.launch { repository.toggle(task) }
     fun delete(task: Task) = viewModelScope.launch { repository.delete(task) }
@@ -95,14 +99,17 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         tab: TaskTab,
     ): TaskListUiState {
         val now = System.currentTimeMillis()
-        val active = tasks.filter { !it.isDone }
-        val done = tasks.filter { it.isDone }
-        val overdueActive = active.filter { it.dueAt != null && it.dueAt < now }
+        val detailed = tasks.filter { !it.isSimple }
+        val simple = tasks.filter { it.isSimple }
+        val activeDetailed = detailed.filter { !it.isDone }
+        val doneDetailed = detailed.filter { it.isDone }
+        val overdueActive = activeDetailed.filter { it.dueAt != null && it.dueAt < now }
 
         val counts = TabCounts(
-            all = tasks.size,
+            all = detailed.size,
+            simple = simple.size,
             overdue = overdueActive.size,
-            completed = done.size,
+            completed = doneDetailed.size,
         )
 
         val sections: List<TaskListSection>
@@ -110,7 +117,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
 
         when (tab) {
             TaskTab.ALL -> {
-                val sortedActive = active.sortedWith(comparator(prefs.sortMode))
+                val sortedActive = activeDetailed.sortedWith(comparator(prefs.sortMode))
                 val activeArranged = if (prefs.overdueOnTop) {
                     val (overdue, others) = sortedActive.partition { t ->
                         t.dueAt != null && t.dueAt < now
@@ -123,19 +130,32 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
                     if (activeArranged.isNotEmpty()) {
                         list += TaskListSection("active", null, activeArranged)
                     }
-                    if (done.isNotEmpty()) {
+                    if (doneDetailed.isNotEmpty()) {
                         list += TaskListSection(
                             key = "completed",
-                            label = "完了済み (${done.size})",
-                            tasks = done.sortedByDescending { it.createdAt },
+                            label = "完了済み (${doneDetailed.size})",
+                            tasks = doneDetailed.sortedByDescending { it.createdAt },
                         )
                     }
                 } else {
-                    val all = activeArranged + done.sortedByDescending { it.createdAt }
+                    val all = activeArranged + doneDetailed.sortedByDescending { it.createdAt }
                     if (all.isNotEmpty()) list += TaskListSection("all", null, all)
                 }
                 sections = list
-                emptyMessage = if (tasks.isEmpty()) null else null
+                emptyMessage = "詳細タスクはまだありません"
+            }
+            TaskTab.SIMPLE -> {
+                val active = simple.filter { !it.isDone }.sortedByDescending { it.createdAt }
+                val done = simple.filter { it.isDone }.sortedByDescending { it.createdAt }
+                val list = mutableListOf<TaskListSection>()
+                if (active.isNotEmpty()) list += TaskListSection("simple_active", null, active)
+                if (done.isNotEmpty()) list += TaskListSection(
+                    key = "simple_done",
+                    label = "完了済み (${done.size})",
+                    tasks = done,
+                )
+                sections = list
+                emptyMessage = "簡易リストは空です。下の入力欄から追加できます。"
             }
             TaskTab.OVERDUE -> {
                 val list = overdueActive.sortedBy { it.dueAt }
@@ -144,7 +164,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
                 emptyMessage = "期限切れのタスクはありません"
             }
             TaskTab.COMPLETED -> {
-                val list = done.sortedByDescending { it.createdAt }
+                val list = doneDetailed.sortedByDescending { it.createdAt }
                 sections = if (list.isEmpty()) emptyList()
                 else listOf(TaskListSection("completed_only", null, list))
                 emptyMessage = "完了済みのタスクはありません"
@@ -154,7 +174,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         return TaskListUiState(
             sections = sections,
             total = tasks.size,
-            hasCompleted = done.isNotEmpty(),
+            hasCompleted = doneDetailed.isNotEmpty() || simple.any { it.isDone },
             preferences = prefs,
             selectedTab = tab,
             counts = counts,

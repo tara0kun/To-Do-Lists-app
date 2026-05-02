@@ -36,6 +36,12 @@ class TaskRepository(
         return id
     }
 
+    suspend fun addSimple(title: String): Long {
+        val trimmed = title.trim()
+        if (trimmed.isEmpty()) return -1L
+        return dao.insert(Task(title = trimmed, isSimple = true))
+    }
+
     suspend fun update(task: Task) {
         scheduler.cancel(task.id)
         val sanitized = if (task.dueAt == null) {
