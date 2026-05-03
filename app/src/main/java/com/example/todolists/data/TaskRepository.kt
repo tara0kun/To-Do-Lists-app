@@ -7,7 +7,9 @@ import com.example.todolists.widget.AllTasksWidget
 import com.example.todolists.widget.CompletedWidget
 import com.example.todolists.widget.OverdueWidget
 import com.example.todolists.widget.SimpleListWidget
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
 class TaskRepository(
     private val context: Context,
@@ -74,7 +76,7 @@ class TaskRepository(
     suspend fun clearCompleted() {
         val completed = dao.completed()
         completed.forEach { scheduler.cancel(it.id) }
-        dao.deleteCompleted()
+        withContext(Dispatchers.IO) { dao.deleteCompleted() }
         refreshWidgets()
     }
 
