@@ -4,7 +4,11 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.updateAll
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.example.todolists.calendar.CalendarIntegration
 import com.example.todolists.notifications.ReminderScheduler
 import com.example.todolists.widget.AllTasksWidget
@@ -109,22 +113,45 @@ class TaskRepository(
         dao.activeRemindable().forEach { scheduler.schedule(it) }
     }
 
-    /**
-     * Belt-and-suspenders refresh: call Glance's updateAll (preferred path)
-     * AND fire APPWIDGET_UPDATE broadcasts to each receiver, in parallel.
-     * Glance's update sometimes races with AppWidgetManager from inside an
-     * action callback, so the broadcast acts as a safety net handled by
-     * Android outside our coroutine.
-     */
     private suspend fun refreshWidgets() = coroutineScope {
+        // Path A: Force Glance to consider state changed so it auto-recomposes.
+        launch { runCatching { touchWidgetState() } }
+        // Path B: Glance's own update API (renders RemoteViews and pushes).
         launch { runCatching { SimpleListWidget().updateAll(context) } }
         launch { runCatching { AllTasksWidget().updateAll(context) } }
         launch { runCatching { OverdueWidget().updateAll(context) } }
         launch { runCatching { CompletedWidget().updateAll(context) } }
+        // Path C: Direct AppWidgetManager broadcast as a safety net.
         broadcastUpdate(SimpleListWidgetReceiver::class.java)
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
         broadcastUpdate(CompletedWidgetReceiver::class.java)
+    }
+
+    /**
+     * Bumps a timestamp inside each widget's PreferencesGlanceStateDefinition.
+     * Glance treats any state change as a trigger for auto-recomposition, so
+     * touching this key forces all live widget instances to redraw using the
+     * current Room snapshot.
+     */
+    private suspend fun touchWidgetState() {
+        val mgr = GlanceAppWidgetManager(context)
+        listOf(
+            SimpleListWidget::class.java,
+            AllTasksWidget::class.java,
+            OverdueWidget::class.java,
+            CompletedWidget::class.java,
+        ).forEach { cls ->
+            runCatching {
+                mgr.getGlanceIds(cls).forEach { id ->
+                    updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                        prefs.toMutablePreferences().apply {
+                            this[TOUCH_KEY] = System.currentTimeMillis()
+                        }.toPreferences()
+                    }
+                }
+            }
+        }
     }
 
     private fun broadcastUpdate(cls: Class<*>) {
@@ -142,6 +169,8 @@ class TaskRepository(
     }
 
     companion object {
+        private val TOUCH_KEY = longPreferencesKey("widget_touch")
+
         @Volatile private var INSTANCE: TaskRepository? = null
         fun get(context: Context): TaskRepository =
             INSTANCE ?: synchronized(this) {
