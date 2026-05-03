@@ -56,6 +56,9 @@ class MainActivity : ComponentActivity() {
         applyOpenTabExtra(intent)
 
         showOnboarding = !prefs.getBoolean(KEY_ONBOARDED, false)
+        // Always nudge the user toward the exact-alarm setting if it's
+        // missing, even after onboarding, so reminders work reliably.
+        ensureExactAlarmPermission()
 
         setContent {
             ToDoListsAppTheme {

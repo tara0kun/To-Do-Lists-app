@@ -184,7 +184,7 @@ object CalendarIntegration {
 
     private suspend fun showToast(context: Context, message: String) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 }
