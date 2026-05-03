@@ -80,10 +80,13 @@ object CalendarIntegration {
     /** Removes the calendar event previously created by [linkEvent]. */
     suspend fun deleteEvent(context: Context, eventId: Long): Boolean =
         withContext(Dispatchers.IO) {
-            runCatching {
+            val app = context.applicationContext
+            val deleted = runCatching {
                 val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
-                context.applicationContext.contentResolver.delete(uri, null, null) > 0
+                app.contentResolver.delete(uri, null, null) > 0
             }.getOrDefault(false)
+            if (deleted) showToast(app, "カレンダーから予定を削除しました")
+            deleted
         }
 
     private fun writeEventDirectAndReturnId(context: Context, task: Task, dueAt: Long): Long? = runCatching {
