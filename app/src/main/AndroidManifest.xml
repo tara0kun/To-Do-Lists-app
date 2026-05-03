@@ -46,6 +46,14 @@
         </receiver>
 
         <receiver
+            android:name=".notifications.TestAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.todolists.action.TEST_ALARM" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".notifications.BootReceiver"
             android:exported="true">
             <intent-filter>

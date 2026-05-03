@@ -18,7 +18,7 @@ object NotificationDebug {
         NotificationChannels.ensureCreated(context)
         val notification = NotificationCompat.Builder(context, NotificationChannels.REMINDERS)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("テスト通知")
+            .setContentTitle("即時通知テスト")
             .setContentText("通知システムは正常に動作しています")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -32,16 +32,18 @@ object NotificationDebug {
             ).show()
             return
         }
-        runCatching {
+        val notifyResult = runCatching {
             manager.notify(TEST_NOTIFICATION_ID, notification)
-            Toast.makeText(context, "テスト通知を発行しました", Toast.LENGTH_SHORT).show()
-        }.onFailure {
-            Toast.makeText(
-                context,
-                "通知の発行に失敗しました: ${it.message}",
-                Toast.LENGTH_LONG,
-            ).show()
         }
+        // Also schedule an alarm-driven test notification 10 seconds ahead
+        // so we can tell whether AlarmManager itself is delivering.
+        val alarmStatus = TestAlarmReceiver.scheduleIn(context, delayMs = 10_000L)
+        val msg = if (notifyResult.isSuccess) {
+            "即時通知を発行 / $alarmStatus"
+        } else {
+            "通知の発行に失敗: ${notifyResult.exceptionOrNull()?.message}"
+        }
+        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
     }
 
     private const val TEST_NOTIFICATION_ID = 99_999
