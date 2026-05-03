@@ -6,18 +6,12 @@ import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.provideContent
-import com.example.todolists.data.TaskRepository
+import com.example.todolists.data.TaskDatabase
 import com.example.todolists.ui.TaskTab
-import kotlinx.coroutines.flow.first
 
 class CompletedWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val items = TaskRepository.get(context).tasks.first()
-            .asSequence()
-            .filter { !it.isSimple && it.isDone }
-            .sortedByDescending { it.createdAt }
-            .take(MAX_ITEMS)
-            .toList()
+        val items = TaskDatabase.get(context).taskDao().completedDetailedSnapshot(MAX_ITEMS)
 
         provideContent {
             GlanceTheme {
