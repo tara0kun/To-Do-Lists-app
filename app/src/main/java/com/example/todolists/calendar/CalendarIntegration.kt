@@ -81,12 +81,24 @@ object CalendarIntegration {
     suspend fun deleteEvent(context: Context, eventId: Long): Boolean =
         withContext(Dispatchers.IO) {
             val app = context.applicationContext
-            val deleted = runCatching {
+            val result = runCatching {
                 val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
-                app.contentResolver.delete(uri, null, null) > 0
-            }.getOrDefault(false)
-            if (deleted) showToast(app, "カレンダーから予定を削除しました")
-            deleted
+                app.contentResolver.delete(uri, null, null)
+            }
+            when {
+                result.isSuccess && (result.getOrDefault(0) ?: 0) > 0 -> {
+                    showToast(app, "カレンダーから予定を削除しました")
+                    true
+                }
+                result.isSuccess -> {
+                    showToast(app, "予定が見つかりません (id=$eventId)")
+                    false
+                }
+                else -> {
+                    showToast(app, "予定の削除に失敗: ${result.exceptionOrNull()?.message}")
+                    false
+                }
+            }
         }
 
     private fun writeEventDirectAndReturnId(context: Context, task: Task, dueAt: Long): Long? = runCatching {

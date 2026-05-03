@@ -77,13 +77,14 @@ class TaskRepository(
 
     suspend fun toggle(task: Task) {
         val newDone = !task.isDone
+        val existingEventId = task.calendarEventId
         // When marking done, also remove the linked calendar event so the
         // user's calendar reflects the completion.
-        val cleanedEventId = if (newDone && task.calendarEventId != null) {
-            CalendarIntegration.deleteEvent(context, task.calendarEventId)
+        val cleanedEventId = if (newDone && existingEventId != null) {
+            CalendarIntegration.deleteEvent(context, existingEventId)
             null
         } else {
-            task.calendarEventId
+            existingEventId
         }
         update(task.copy(isDone = newDone, calendarEventId = cleanedEventId))
     }
