@@ -1,11 +1,11 @@
 package com.example.todolists.notifications
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.example.todolists.MainActivity
 import com.example.todolists.R
 import com.example.todolists.data.TaskDatabase
@@ -23,13 +23,25 @@ class ReminderReceiver : BroadcastReceiver() {
         if (taskId == -1L) return
         val kindName = intent.getStringExtra(EXTRA_KIND) ?: ReminderKind.AT_DUE.name
         val kind = runCatching { ReminderKind.valueOf(kindName) }.getOrDefault(ReminderKind.AT_DUE)
+        val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        val dueAt = intent.getLongExtra(EXTRA_DUE_AT, 0L).takeIf { it > 0L }
 
+        // Show the notification synchronously, exactly like the working
+        // TestAlarmReceiver path. We carry the task title in the intent
+        // extras so we don't need to wait on a Room query.
+        showNotification(context, taskId, title, dueAt, kind)
+
+        // Best-effort: if the task has been completed/deleted between
+        // scheduling and now, cancel the notification we just posted.
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val task = TaskDatabase.get(context).taskDao().findById(taskId)
-                if (task != null && !task.isDone) {
-                    showNotification(context, taskId, task.title, task.dueAt, kind)
+                if (task == null || task.isDone) {
+                    runCatching {
+                        NotificationManagerCompat.from(context)
+                            .cancel(notificationId(taskId, kind))
+                    }
                 }
             } finally {
                 pendingResult.finish()
@@ -61,7 +73,7 @@ class ReminderReceiver : BroadcastReceiver() {
             ReminderKind.ON_DAY -> "今日が期限のタスク"
         }
         val body = buildString {
-            append(title)
+            append(title.ifBlank { "タスク" })
             if (dueAt != null) {
                 append(" (")
                 append(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(dueAt)))
@@ -79,8 +91,9 @@ class ReminderReceiver : BroadcastReceiver() {
             .setContentIntent(contentPI)
             .build()
 
-        val nm = context.getSystemService(NotificationManager::class.java) ?: return
-        nm.notify(notificationId(taskId, kind), notification)
+        runCatching {
+            NotificationManagerCompat.from(context).notify(notificationId(taskId, kind), notification)
+        }
     }
 
     private fun notificationId(taskId: Long, kind: ReminderKind): Int {
@@ -92,5 +105,7 @@ class ReminderReceiver : BroadcastReceiver() {
         const val ACTION = "com.example.todolists.action.REMINDER"
         const val EXTRA_TASK_ID = "task_id"
         const val EXTRA_KIND = "kind"
+        const val EXTRA_TITLE = "title"
+        const val EXTRA_DUE_AT = "due_at"
     }
 }

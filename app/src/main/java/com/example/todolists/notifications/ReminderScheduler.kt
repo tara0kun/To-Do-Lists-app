@@ -49,7 +49,7 @@ class ReminderScheduler(private val context: Context) {
     fun cancel(taskId: Long) {
         val am = alarmManager ?: return
         ReminderKind.values().forEach { kind ->
-            val pi = pendingIntent(taskId, kind, mutable = false, createIfMissing = false) ?: return@forEach
+            val pi = cancelPendingIntent(taskId, kind) ?: return@forEach
             am.cancel(pi)
             pi.cancel()
         }
@@ -57,7 +57,7 @@ class ReminderScheduler(private val context: Context) {
 
     private fun scheduleAt(task: Task, kind: ReminderKind, triggerAt: Long) {
         val am = alarmManager ?: return
-        val pi = pendingIntent(task.id, kind, mutable = false, createIfMissing = true) ?: return
+        val pi = pendingIntent(task, kind, mutable = false, createIfMissing = true) ?: return
         val canExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) am.canScheduleExactAlarms() else true
         if (canExact) {
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
@@ -67,20 +67,34 @@ class ReminderScheduler(private val context: Context) {
     }
 
     private fun pendingIntent(
-        taskId: Long,
+        task: Task,
         kind: ReminderKind,
         mutable: Boolean,
         createIfMissing: Boolean,
     ): PendingIntent? {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ReminderReceiver.ACTION
-            putExtra(ReminderReceiver.EXTRA_TASK_ID, taskId)
+            putExtra(ReminderReceiver.EXTRA_TASK_ID, task.id)
             putExtra(ReminderReceiver.EXTRA_KIND, kind.name)
+            putExtra(ReminderReceiver.EXTRA_TITLE, task.title)
+            task.dueAt?.let { putExtra(ReminderReceiver.EXTRA_DUE_AT, it) }
         }
         var flags = if (mutable) PendingIntent.FLAG_MUTABLE else PendingIntent.FLAG_IMMUTABLE
         if (!createIfMissing) flags = flags or PendingIntent.FLAG_NO_CREATE
         else flags = flags or PendingIntent.FLAG_UPDATE_CURRENT
-        return PendingIntent.getBroadcast(context, requestCode(taskId, kind), intent, flags)
+        return PendingIntent.getBroadcast(context, requestCode(task.id, kind), intent, flags)
+    }
+
+    private fun cancelPendingIntent(taskId: Long, kind: ReminderKind): PendingIntent? {
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ReminderReceiver.ACTION
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            requestCode(taskId, kind),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE,
+        )
     }
 
     private fun computeOnDayMillis(dueAt: Long, hour: Int, minute: Int): Long {
