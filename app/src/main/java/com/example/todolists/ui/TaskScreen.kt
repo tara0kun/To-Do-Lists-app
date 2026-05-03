@@ -171,7 +171,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                     priority = draft.priority.storageValue,
                 )
                 if (draft.addToCalendar && draft.combinedDueAt != null) {
-                    CalendarIntegration.openInsertEvent(
+                    CalendarIntegration.linkEvent(
                         context,
                         Task(
                             title = draft.title.trim(),
@@ -204,7 +204,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                 )
                 viewModel.update(updated)
                 if (draft.addToCalendar && updated.dueAt != null) {
-                    CalendarIntegration.openInsertEvent(context, updated)
+                    CalendarIntegration.linkEvent(context, updated)
                 }
             },
             submitLabel = "保存",

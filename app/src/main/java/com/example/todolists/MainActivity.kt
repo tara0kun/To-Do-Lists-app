@@ -26,13 +26,17 @@ class MainActivity : ComponentActivity() {
     private val viewModel: TaskViewModel by viewModels()
 
     private val requestNotificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result is informational */ }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* informational */ }
+
+    private val requestCalendarPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { /* informational */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         NotificationChannels.ensureCreated(this)
         ensureNotificationPermission()
+        ensureCalendarPermissions()
         applyOpenTabExtra(intent)
 
         setContent {
@@ -62,6 +66,20 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun ensureCalendarPermissions() {
+        val toRequest = buildList {
+            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALENDAR)
+                != PackageManager.PERMISSION_GRANTED
+            ) add(Manifest.permission.READ_CALENDAR)
+            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.WRITE_CALENDAR)
+                != PackageManager.PERMISSION_GRANTED
+            ) add(Manifest.permission.WRITE_CALENDAR)
+        }
+        if (toRequest.isNotEmpty()) {
+            requestCalendarPermissions.launch(toRequest.toTypedArray())
         }
     }
 
