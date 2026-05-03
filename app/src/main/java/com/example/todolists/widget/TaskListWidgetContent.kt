@@ -2,11 +2,6 @@ package com.example.todolists.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -40,12 +35,12 @@ import androidx.glance.text.TextStyle
 import com.example.todolists.MainActivity
 import com.example.todolists.R
 import com.example.todolists.data.Task
-import com.example.todolists.data.TaskRepository
 import com.example.todolists.ui.TaskTab
-import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+enum class AddKind { NONE, SIMPLE, DETAILED }
 
 @Composable
 fun TaskListWidgetContent(
@@ -55,14 +50,8 @@ fun TaskListWidgetContent(
     addKind: AddKind,
     showMeta: Boolean,
     emptyMessage: String,
-    filterTasks: (List<Task>) -> List<Task>,
+    items: List<Task>,
 ) {
-    var items by remember { mutableStateOf<List<Task>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        items = filterTasks(TaskRepository.get(context).tasks.first())
-    }
-
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -88,8 +77,6 @@ fun TaskListWidgetContent(
         }
     }
 }
-
-enum class AddKind { NONE, SIMPLE, DETAILED }
 
 @Composable
 private fun HeaderBar(
