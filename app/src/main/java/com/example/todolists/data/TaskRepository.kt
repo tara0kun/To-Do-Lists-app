@@ -133,6 +133,9 @@ class TaskRepository(
         val intent = Intent(context, cls).apply {
             action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+            // Foreground priority so battery-optimised launchers deliver
+            // the broadcast immediately instead of batching it.
+            addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
         }
         context.sendBroadcast(intent)
     }
