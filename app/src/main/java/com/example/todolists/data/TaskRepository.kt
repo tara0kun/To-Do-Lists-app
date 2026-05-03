@@ -4,12 +4,19 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.glance.appwidget.updateAll
 import com.example.todolists.notifications.ReminderScheduler
+import com.example.todolists.widget.AllTasksWidget
 import com.example.todolists.widget.AllTasksWidgetReceiver
+import com.example.todolists.widget.CompletedWidget
 import com.example.todolists.widget.CompletedWidgetReceiver
+import com.example.todolists.widget.OverdueWidget
 import com.example.todolists.widget.OverdueWidgetReceiver
+import com.example.todolists.widget.SimpleListWidget
 import com.example.todolists.widget.SimpleListWidgetReceiver
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 class TaskRepository(
     private val context: Context,
@@ -85,12 +92,17 @@ class TaskRepository(
     }
 
     /**
-     * Sends APPWIDGET_UPDATE broadcasts directly to each widget receiver.
-     * Glance's [updateAll] sometimes races with the AppWidgetManager when
-     * called from inside an action callback; the broadcast path is processed
-     * by Android outside our coroutine and reliably re-runs provideGlance.
+     * Belt-and-suspenders refresh: call Glance's updateAll (preferred path)
+     * AND fire APPWIDGET_UPDATE broadcasts to each receiver, in parallel.
+     * Glance's update sometimes races with AppWidgetManager from inside an
+     * action callback, so the broadcast acts as a safety net handled by
+     * Android outside our coroutine.
      */
-    private fun refreshWidgets() {
+    private suspend fun refreshWidgets() = coroutineScope {
+        launch { runCatching { SimpleListWidget().updateAll(context) } }
+        launch { runCatching { AllTasksWidget().updateAll(context) } }
+        launch { runCatching { OverdueWidget().updateAll(context) } }
+        launch { runCatching { CompletedWidget().updateAll(context) } }
         broadcastUpdate(SimpleListWidgetReceiver::class.java)
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
