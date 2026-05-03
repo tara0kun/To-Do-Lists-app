@@ -1,6 +1,7 @@
 package com.example.todolists.data
 
 import android.content.Context
+import androidx.glance.appwidget.updateAll
 import com.example.todolists.notifications.ReminderScheduler
 import com.example.todolists.widget.AllTasksWidget
 import com.example.todolists.widget.CompletedWidget

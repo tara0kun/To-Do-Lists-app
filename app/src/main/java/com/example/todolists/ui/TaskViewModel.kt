@@ -186,7 +186,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         SortMode.PRIORITY_THEN_DUE -> compareByDescending<Task> { it.priority }
             .thenBy(nullsLast()) { it.dueAt }
             .thenByDescending { it.createdAt }
-        SortMode.DUE_DATE_ASC -> compareBy<Task>(nullsLast()) { it.dueAt }
+        SortMode.DUE_DATE_ASC -> compareBy<Task, Long?>(nullsLast<Long>()) { it.dueAt }
             .thenByDescending { it.priority }
             .thenByDescending { it.createdAt }
         SortMode.PRIORITY_DESC -> compareByDescending<Task> { it.priority }
