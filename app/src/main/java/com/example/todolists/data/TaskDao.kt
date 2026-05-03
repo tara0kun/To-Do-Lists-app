@@ -22,10 +22,10 @@ interface TaskDao {
     suspend fun insert(task: Task): Long
 
     @Update
-    suspend fun update(task: Task)
+    suspend fun update(task: Task): Int
 
     @Delete
-    suspend fun delete(task: Task)
+    suspend fun delete(task: Task): Int
 
     @Query("SELECT * FROM tasks WHERE isDone = 1")
     suspend fun completed(): List<Task>
