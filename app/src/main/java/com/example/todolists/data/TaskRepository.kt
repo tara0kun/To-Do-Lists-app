@@ -7,7 +7,9 @@ import com.example.todolists.widget.AllTasksWidget
 import com.example.todolists.widget.CompletedWidget
 import com.example.todolists.widget.OverdueWidget
 import com.example.todolists.widget.SimpleListWidget
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 class TaskRepository(
     private val context: Context,
@@ -82,11 +84,11 @@ class TaskRepository(
         dao.activeRemindable().forEach { scheduler.schedule(it) }
     }
 
-    private suspend fun refreshWidgets() {
-        runCatching { SimpleListWidget().updateAll(context) }
-        runCatching { AllTasksWidget().updateAll(context) }
-        runCatching { OverdueWidget().updateAll(context) }
-        runCatching { CompletedWidget().updateAll(context) }
+    private suspend fun refreshWidgets() = coroutineScope {
+        launch { runCatching { SimpleListWidget().updateAll(context) } }
+        launch { runCatching { AllTasksWidget().updateAll(context) } }
+        launch { runCatching { OverdueWidget().updateAll(context) } }
+        launch { runCatching { CompletedWidget().updateAll(context) } }
     }
 
     companion object {
