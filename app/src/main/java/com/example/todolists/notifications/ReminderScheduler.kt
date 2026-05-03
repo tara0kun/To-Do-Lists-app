@@ -5,23 +5,44 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import com.example.todolists.data.Task
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class ReminderScheduler(private val context: Context) {
 
     private val alarmManager: AlarmManager? =
         context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun schedule(task: Task) {
         if (task.isDone || task.dueAt == null) return
         val now = System.currentTimeMillis()
-        if (task.remindAtDue && task.dueAt > now) {
-            scheduleAt(task, ReminderKind.AT_DUE, task.dueAt)
+        val parts = mutableListOf<String>()
+        if (task.remindAtDue) {
+            if (task.dueAt > now) {
+                scheduleAt(task, ReminderKind.AT_DUE, task.dueAt)
+                parts += "期限時刻 ${formatTime(task.dueAt)}"
+            } else {
+                parts += "期限時刻(過去のためスキップ)"
+            }
         }
         if (task.remindOnDay) {
             val onDayMillis = computeOnDayMillis(task.dueAt, task.remindOnDayHour, task.remindOnDayMinute)
-            if (onDayMillis > now) scheduleAt(task, ReminderKind.ON_DAY, onDayMillis)
+            if (onDayMillis > now) {
+                scheduleAt(task, ReminderKind.ON_DAY, onDayMillis)
+                parts += "当日 ${formatTime(onDayMillis)}"
+            } else {
+                parts += "当日(過去のためスキップ)"
+            }
+        }
+        if (parts.isNotEmpty()) {
+            showToast("リマインダー: ${parts.joinToString(", ")}")
         }
     }
 
@@ -76,6 +97,15 @@ class ReminderScheduler(private val context: Context) {
     private fun requestCode(taskId: Long, kind: ReminderKind): Int {
         val base = (taskId.toInt() and 0x3FFFFFFF) shl 1
         return base or kind.ordinal
+    }
+
+    private fun formatTime(millis: Long): String =
+        SimpleDateFormat("M/d HH:mm", Locale.getDefault()).format(Date(millis))
+
+    private fun showToast(message: String) {
+        mainHandler.post {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
     }
 }
 
