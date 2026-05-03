@@ -54,12 +54,19 @@ object CalendarIntegration {
         val app = context.applicationContext
 
         scope.launch {
-            val written = if (hasWritePermission(app)) writeEventDirect(app, task, dueAt) else false
+            if (!hasWritePermission(app)) {
+                showToast(app, "カレンダー権限が無いため確認画面で追加します")
+                withContext(Dispatchers.Main) {
+                    if (!tryNativeIntent(app, task, dueAt)) tryWebIntent(app, task, dueAt)
+                }
+                return@launch
+            }
+            val written = writeEventDirect(app, task, dueAt)
             if (written) {
                 showToast(app, "カレンダーに追加しました")
                 return@launch
             }
-            // Fallback path: open an intent on the main thread.
+            showToast(app, "書き込めるカレンダーが見つかりません(Googleアカウント未設定?) — 確認画面で追加します")
             withContext(Dispatchers.Main) {
                 if (tryNativeIntent(app, task, dueAt)) return@withContext
                 if (tryWebIntent(app, task, dueAt)) return@withContext
@@ -106,23 +113,25 @@ object CalendarIntegration {
     }
 
     private fun findWritableCalendarId(context: Context): Long? = runCatching {
-        val projection = arrayOf(
-            CalendarContract.Calendars._ID,
-            CalendarContract.Calendars.IS_PRIMARY,
-        )
-        val selection = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= " +
-            "${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}"
+        val projection = arrayOf(CalendarContract.Calendars._ID)
         val sortOrder = "${CalendarContract.Calendars.IS_PRIMARY} DESC, " +
             "${CalendarContract.Calendars._ID} ASC"
+        // Try CONTRIBUTOR-or-better first; if none, fall back to any calendar.
         context.contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI,
             projection,
-            selection,
+            "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= " +
+                "${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}",
             null,
             sortOrder,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getLong(0) else null
-        }
+        )?.use { c -> if (c.moveToFirst()) return@runCatching c.getLong(0) }
+        context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            projection,
+            null,
+            null,
+            sortOrder,
+        )?.use { c -> if (c.moveToFirst()) c.getLong(0) else null }
     }.getOrNull()
 
     private fun computeOnDayTriggerMillis(task: Task): Long {
