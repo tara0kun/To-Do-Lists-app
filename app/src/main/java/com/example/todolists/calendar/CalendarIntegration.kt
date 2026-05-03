@@ -49,34 +49,45 @@ object CalendarIntegration {
      * Adds the task to the user's calendar. Runs in the background; surfaces
      * the outcome via a Toast on the main thread.
      */
-    fun linkEvent(context: Context, task: Task) {
-        val dueAt = task.dueAt ?: return
+    /**
+     * Tries to add the task to the calendar. Returns the inserted event ID
+     * when the direct ContentResolver write succeeded; returns null when it
+     * fell back to the calendar app or web URL (we don't get the ID then).
+     */
+    suspend fun linkEvent(context: Context, task: Task): Long? = withContext(Dispatchers.IO) {
+        val dueAt = task.dueAt ?: return@withContext null
         val app = context.applicationContext
 
-        scope.launch {
-            if (!hasWritePermission(app)) {
-                showToast(app, "カレンダー権限が無いため確認画面で追加します")
-                withContext(Dispatchers.Main) {
-                    if (!tryNativeIntent(app, task, dueAt)) tryWebIntent(app, task, dueAt)
-                }
-                return@launch
-            }
-            val written = writeEventDirect(app, task, dueAt)
-            if (written) {
+        if (hasWritePermission(app)) {
+            val eventId = writeEventDirectAndReturnId(app, task, dueAt)
+            if (eventId != null) {
                 showToast(app, "カレンダーに追加しました")
-                return@launch
+                return@withContext eventId
             }
             showToast(app, "書き込めるカレンダーが見つかりません(Googleアカウント未設定?) — 確認画面で追加します")
-            withContext(Dispatchers.Main) {
-                if (tryNativeIntent(app, task, dueAt)) return@withContext
-                if (tryWebIntent(app, task, dueAt)) return@withContext
-                Toast.makeText(app, "カレンダーに追加できませんでした", Toast.LENGTH_SHORT).show()
-            }
+        } else {
+            showToast(app, "カレンダー権限が無いため確認画面で追加します")
         }
+
+        withContext(Dispatchers.Main) {
+            if (tryNativeIntent(app, task, dueAt)) return@withContext
+            if (tryWebIntent(app, task, dueAt)) return@withContext
+            Toast.makeText(app, "カレンダーに追加できませんでした", Toast.LENGTH_LONG).show()
+        }
+        null
     }
 
-    private fun writeEventDirect(context: Context, task: Task, dueAt: Long): Boolean = runCatching {
-        val calId = findWritableCalendarId(context) ?: return false
+    /** Removes the calendar event previously created by [linkEvent]. */
+    suspend fun deleteEvent(context: Context, eventId: Long): Boolean =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
+                context.applicationContext.contentResolver.delete(uri, null, null) > 0
+            }.getOrDefault(false)
+        }
+
+    private fun writeEventDirectAndReturnId(context: Context, task: Task, dueAt: Long): Long? = runCatching {
+        val calId = findWritableCalendarId(context) ?: return@runCatching null
         val values = ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, calId)
             put(CalendarContract.Events.TITLE, task.title)
@@ -89,7 +100,7 @@ object CalendarIntegration {
             }
         }
         val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
-            ?: return false
+            ?: return@runCatching null
         val eventId = ContentUris.parseId(uri)
 
         if (task.remindAtDue) {
@@ -100,8 +111,8 @@ object CalendarIntegration {
             val minutesBefore = ((dueAt - onDayMillis) / 60_000L).toInt().coerceAtLeast(0)
             insertReminder(context, eventId, minutesBefore = minutesBefore)
         }
-        true
-    }.getOrDefault(false)
+        eventId
+    }.getOrNull()
 
     private fun insertReminder(context: Context, eventId: Long, minutesBefore: Int) {
         val values = ContentValues().apply {

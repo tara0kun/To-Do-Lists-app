@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.glance.appwidget.updateAll
+import com.example.todolists.calendar.CalendarIntegration
 import com.example.todolists.notifications.ReminderScheduler
 import com.example.todolists.widget.AllTasksWidget
 import com.example.todolists.widget.AllTasksWidgetReceiver
@@ -33,6 +34,7 @@ class TaskRepository(
         remindOnDayHour: Int = 9,
         remindOnDayMinute: Int = 0,
         priority: Int = Priority.MEDIUM.storageValue,
+        calendarEventId: Long? = null,
     ): Long {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return -1L
@@ -45,6 +47,7 @@ class TaskRepository(
                 remindOnDayHour = remindOnDayHour,
                 remindOnDayMinute = remindOnDayMinute,
                 priority = priority,
+                calendarEventId = calendarEventId,
             )
         )
         dao.findById(id)?.let { scheduler.schedule(it) }
@@ -72,10 +75,24 @@ class TaskRepository(
         refreshWidgets()
     }
 
-    suspend fun toggle(task: Task) = update(task.copy(isDone = !task.isDone))
+    suspend fun toggle(task: Task) {
+        val newDone = !task.isDone
+        // When marking done, also remove the linked calendar event so the
+        // user's calendar reflects the completion.
+        val cleanedEventId = if (newDone && task.calendarEventId != null) {
+            CalendarIntegration.deleteEvent(context, task.calendarEventId)
+            null
+        } else {
+            task.calendarEventId
+        }
+        update(task.copy(isDone = newDone, calendarEventId = cleanedEventId))
+    }
 
     suspend fun delete(task: Task) {
         scheduler.cancel(task.id)
+        if (task.calendarEventId != null) {
+            CalendarIntegration.deleteEvent(context, task.calendarEventId)
+        }
         dao.delete(task)
         refreshWidgets()
     }

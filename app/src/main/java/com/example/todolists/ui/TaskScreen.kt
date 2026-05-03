@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationImportant
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
@@ -49,6 +50,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +67,7 @@ import com.example.todolists.R
 import com.example.todolists.calendar.CalendarIntegration
 import com.example.todolists.data.Priority
 import com.example.todolists.data.Task
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -74,6 +77,7 @@ import java.util.Locale
 fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var showAddSheet by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
@@ -84,6 +88,15 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = {
+                        com.example.todolists.notifications.NotificationDebug
+                            .fireTestNotification(context)
+                    }) {
+                        Icon(
+                            Icons.Filled.NotificationImportant,
+                            contentDescription = "通知をテスト",
+                        )
+                    }
                     if (!isSimpleTab) {
                         IconButton(onClick = { showSortSheet = true }) {
                             Icon(Icons.Filled.Sort, contentDescription = "並び替え")
@@ -161,26 +174,29 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
         AddEditTaskSheet(
             onDismiss = { showAddSheet = false },
             onSubmit = { draft ->
-                viewModel.add(
-                    title = draft.title,
-                    dueAt = draft.combinedDueAt,
-                    remindAtDue = draft.remindAtDue && draft.combinedDueAt != null,
-                    remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
-                    remindOnDayHour = draft.onDayHour,
-                    remindOnDayMinute = draft.onDayMinute,
-                    priority = draft.priority.storageValue,
-                )
-                if (draft.addToCalendar && draft.combinedDueAt != null) {
-                    CalendarIntegration.linkEvent(
-                        context,
-                        Task(
-                            title = draft.title.trim(),
-                            dueAt = draft.combinedDueAt,
-                            remindAtDue = draft.remindAtDue,
-                            remindOnDay = draft.remindOnDay,
-                            remindOnDayHour = draft.onDayHour,
-                            remindOnDayMinute = draft.onDayMinute,
-                        ),
+                coroutineScope.launch {
+                    val eventId = if (draft.addToCalendar && draft.combinedDueAt != null) {
+                        CalendarIntegration.linkEvent(
+                            context,
+                            Task(
+                                title = draft.title.trim(),
+                                dueAt = draft.combinedDueAt,
+                                remindAtDue = draft.remindAtDue,
+                                remindOnDay = draft.remindOnDay,
+                                remindOnDayHour = draft.onDayHour,
+                                remindOnDayMinute = draft.onDayMinute,
+                            ),
+                        )
+                    } else null
+                    viewModel.add(
+                        title = draft.title,
+                        dueAt = draft.combinedDueAt,
+                        remindAtDue = draft.remindAtDue && draft.combinedDueAt != null,
+                        remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
+                        remindOnDayHour = draft.onDayHour,
+                        remindOnDayMinute = draft.onDayMinute,
+                        priority = draft.priority.storageValue,
+                        calendarEventId = eventId,
                     )
                 }
             },
@@ -193,18 +209,31 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             initial = task.toDraft(),
             onDismiss = { editingTask = null },
             onSubmit = { draft ->
-                val updated = task.copy(
-                    title = draft.title.trim(),
-                    dueAt = draft.combinedDueAt,
-                    remindAtDue = draft.remindAtDue && draft.combinedDueAt != null,
-                    remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
-                    remindOnDayHour = draft.onDayHour,
-                    remindOnDayMinute = draft.onDayMinute,
-                    priority = draft.priority.storageValue,
-                )
-                viewModel.update(updated)
-                if (draft.addToCalendar && updated.dueAt != null) {
-                    CalendarIntegration.linkEvent(context, updated)
+                coroutineScope.launch {
+                    val newEventId = if (draft.addToCalendar && draft.combinedDueAt != null) {
+                        CalendarIntegration.linkEvent(
+                            context,
+                            task.copy(
+                                title = draft.title.trim(),
+                                dueAt = draft.combinedDueAt,
+                                remindAtDue = draft.remindAtDue,
+                                remindOnDay = draft.remindOnDay,
+                                remindOnDayHour = draft.onDayHour,
+                                remindOnDayMinute = draft.onDayMinute,
+                            ),
+                        )
+                    } else null
+                    val updated = task.copy(
+                        title = draft.title.trim(),
+                        dueAt = draft.combinedDueAt,
+                        remindAtDue = draft.remindAtDue && draft.combinedDueAt != null,
+                        remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
+                        remindOnDayHour = draft.onDayHour,
+                        remindOnDayMinute = draft.onDayMinute,
+                        priority = draft.priority.storageValue,
+                        calendarEventId = newEventId ?: task.calendarEventId,
+                    )
+                    viewModel.update(updated)
                 }
             },
             submitLabel = "保存",
