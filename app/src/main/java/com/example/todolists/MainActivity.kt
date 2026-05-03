@@ -13,9 +13,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.todolists.notifications.NotificationChannels
+import com.example.todolists.ui.OnboardingDialog
 import com.example.todolists.ui.TaskScreen
 import com.example.todolists.ui.TaskTab
 import com.example.todolists.ui.TaskViewModel
@@ -24,25 +28,38 @@ import com.example.todolists.ui.theme.ToDoListsAppTheme
 class MainActivity : ComponentActivity() {
 
     private val viewModel: TaskViewModel by viewModels()
+    private val prefs by lazy { getSharedPreferences(PREFS, MODE_PRIVATE) }
+
+    private var showOnboarding by mutableStateOf(false)
 
     private val requestNotificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* informational */ }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            requestCalendarPermissions.launch(
+                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+            )
+        }
 
     private val requestCalendarPermissions =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { /* informational */ }
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            prefs.edit().putBoolean(KEY_ONBOARDED, true).apply()
+            showOnboarding = false
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         NotificationChannels.ensureCreated(this)
-        ensureNotificationPermission()
-        ensureCalendarPermissions()
         applyOpenTabExtra(intent)
+
+        showOnboarding = !prefs.getBoolean(KEY_ONBOARDED, false)
 
         setContent {
             ToDoListsAppTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     TaskScreen(viewModel = viewModel)
+                }
+                if (showOnboarding) {
+                    OnboardingDialog(onConfirm = ::startPermissionChain)
                 }
             }
         }
@@ -59,32 +76,25 @@ class MainActivity : ComponentActivity() {
         viewModel.selectTab(tab)
     }
 
-    private fun ensureNotificationPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val granted = ContextCompat.checkSelfPermission(
-            this, Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    private fun startPermissionChain() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
         }
-    }
-
-    private fun ensureCalendarPermissions() {
-        val toRequest = buildList {
-            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.READ_CALENDAR)
-            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.WRITE_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.WRITE_CALENDAR)
-        }
-        if (toRequest.isNotEmpty()) {
-            requestCalendarPermissions.launch(toRequest.toTypedArray())
-        }
+        requestCalendarPermissions.launch(
+            arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+        )
     }
 
     companion object {
         const val EXTRA_OPEN_TAB = "open_tab"
+        private const val PREFS = "app_prefs"
+        private const val KEY_ONBOARDED = "onboarded_v1"
 
         fun intentForTab(context: Context, tab: TaskTab): Intent =
             Intent(context, MainActivity::class.java).apply {
