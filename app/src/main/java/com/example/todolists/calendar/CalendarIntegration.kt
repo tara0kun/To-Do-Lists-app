@@ -142,7 +142,18 @@ object CalendarIntegration {
         val projection = arrayOf(CalendarContract.Calendars._ID)
         val sortOrder = "${CalendarContract.Calendars.IS_PRIMARY} DESC, " +
             "${CalendarContract.Calendars._ID} ASC"
-        // Try CONTRIBUTOR-or-better first; if none, fall back to any calendar.
+        // 1) Prefer a Google-account calendar (so the event shows up in
+        //    the Google Calendar app the user is checking).
+        context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            projection,
+            "${CalendarContract.Calendars.ACCOUNT_TYPE} = ? AND " +
+                "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= " +
+                "${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}",
+            arrayOf("com.google"),
+            sortOrder,
+        )?.use { c -> if (c.moveToFirst()) return@runCatching c.getLong(0) }
+        // 2) Any CONTRIBUTOR-or-better calendar (could be Exchange etc.).
         context.contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI,
             projection,
@@ -151,6 +162,9 @@ object CalendarIntegration {
             null,
             sortOrder,
         )?.use { c -> if (c.moveToFirst()) return@runCatching c.getLong(0) }
+        // 3) Last resort: the first calendar of any kind (likely a local-only
+        //    "Phone" calendar — visible in stock Calendar but NOT in
+        //    Google Calendar app).
         context.contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI,
             projection,
