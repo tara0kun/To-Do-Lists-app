@@ -8,6 +8,7 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.example.todolists.data.TaskRepository
+import kotlinx.coroutines.launch
 
 class ToggleTaskAction : ActionCallback {
     override suspend fun onAction(
@@ -18,30 +19,33 @@ class ToggleTaskAction : ActionCallback {
         val id = parameters[TaskIdKey] ?: return
         val wasDone = parameters[WasDoneKey] ?: false
         val newDone = !wasDone
+        val app = context.applicationContext
 
-        // 1. Optimistic UI: store the new done value in Glance state immediately
-        //    so the checkbox flips before the slower DB / scheduler work runs.
+        // 1. Optimistic UI: persist the new done value into Glance state
+        //    right away. This is the only thing we await — Glance's
+        //    auto-recompose then flips the checkbox before the action
+        //    returns, no matter how slow the DB / calendar work is.
         runCatching {
-            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+            updateAppWidgetState(app, PreferencesGlanceStateDefinition, glanceId) { prefs ->
                 prefs.toMutablePreferences().apply {
                     this[optimisticKey(id)] = newDone
                 }.toPreferences()
             }
         }
 
-        // 2. Persist the toggle in Room (cancels/reschedules reminders, refreshes
-        //    other widgets, deletes calendar events when applicable).
-        val repository = TaskRepository.get(context)
-        val task = repository.findById(id) ?: return
-        repository.toggle(task)
-
-        // 3. Drop the optimistic override now that the DB is in sync, so future
-        //    renders read straight from Room again.
-        runCatching {
-            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
-                prefs.toMutablePreferences().apply {
-                    remove(optimisticKey(id))
-                }.toPreferences()
+        // 2. Move the heavy work (DB write, scheduler, calendar delete,
+        //    other widgets' refresh) off the action's coroutine so the
+        //    callback can return immediately and let Glance redraw.
+        WidgetWorkScope.launch {
+            val repository = TaskRepository.get(app)
+            val task = repository.findById(id) ?: return@launch
+            repository.toggle(task)
+            runCatching {
+                updateAppWidgetState(app, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+                    prefs.toMutablePreferences().apply {
+                        remove(optimisticKey(id))
+                    }.toPreferences()
+                }
             }
         }
     }
