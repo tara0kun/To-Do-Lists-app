@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
@@ -122,22 +123,49 @@ class TaskRepository(
     }
 
     private suspend fun refreshWidgets() {
+        val t0 = System.currentTimeMillis()
+        Log.d(TAG, "[$t0] refreshWidgets start")
         // Step 1: bump Glance state. This is what triggers Glance's own
         // auto-recompose path (the same path that makes optimistic UI fast).
+        val tStateStart = System.currentTimeMillis()
         runCatching { touchWidgetState() }
+        Log.d(TAG, "[${System.currentTimeMillis()}] touchWidgetState done (${System.currentTimeMillis() - tStateStart}ms)")
         // Step 2: render and push fresh RemoteViews via Glance's API.
+        val tUpdateStart = System.currentTimeMillis()
         coroutineScope {
-            launch { runCatching { SimpleListWidget().updateAll(context) } }
-            launch { runCatching { AllTasksWidget().updateAll(context) } }
-            launch { runCatching { OverdueWidget().updateAll(context) } }
-            launch { runCatching { CompletedWidget().updateAll(context) } }
+            launch {
+                val s = System.currentTimeMillis()
+                runCatching { SimpleListWidget().updateAll(context) }
+                    .onFailure { Log.e(TAG, "Simple updateAll failed", it) }
+                Log.d(TAG, "Simple updateAll ${System.currentTimeMillis() - s}ms")
+            }
+            launch {
+                val s = System.currentTimeMillis()
+                runCatching { AllTasksWidget().updateAll(context) }
+                    .onFailure { Log.e(TAG, "AllTasks updateAll failed", it) }
+                Log.d(TAG, "AllTasks updateAll ${System.currentTimeMillis() - s}ms")
+            }
+            launch {
+                val s = System.currentTimeMillis()
+                runCatching { OverdueWidget().updateAll(context) }
+                    .onFailure { Log.e(TAG, "Overdue updateAll failed", it) }
+                Log.d(TAG, "Overdue updateAll ${System.currentTimeMillis() - s}ms")
+            }
+            launch {
+                val s = System.currentTimeMillis()
+                runCatching { CompletedWidget().updateAll(context) }
+                    .onFailure { Log.e(TAG, "Completed updateAll failed", it) }
+                Log.d(TAG, "Completed updateAll ${System.currentTimeMillis() - s}ms")
+            }
         }
+        Log.d(TAG, "[${System.currentTimeMillis()}] all updateAll done (${System.currentTimeMillis() - tUpdateStart}ms)")
         // Step 3: foreground broadcast as a safety net for launchers that
         // ignore the previous two paths.
         broadcastUpdate(SimpleListWidgetReceiver::class.java)
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
         broadcastUpdate(CompletedWidgetReceiver::class.java)
+        Log.d(TAG, "[${System.currentTimeMillis()}] refreshWidgets total ${System.currentTimeMillis() - t0}ms")
     }
 
     private suspend fun markOptimisticForWidgets(taskId: Long, isDone: Boolean) {
@@ -215,6 +243,7 @@ class TaskRepository(
     }
 
     companion object {
+        private const val TAG = "WidgetDbg"
         private val TOUCH_KEY = longPreferencesKey("widget_touch")
 
         @Volatile private var INSTANCE: TaskRepository? = null
