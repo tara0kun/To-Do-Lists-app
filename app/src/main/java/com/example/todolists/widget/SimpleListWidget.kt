@@ -11,6 +11,7 @@ import com.example.todolists.ui.TaskTab
 class SimpleListWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val items = TaskDatabase.get(context).taskDao().simpleVisibleSnapshot(MAX_ITEMS)
+        val background = WidgetBackgroundLoader.load(context)
 
         provideContent {
             GlanceTheme {
@@ -22,6 +23,7 @@ class SimpleListWidget : GlanceAppWidget() {
                     showMeta = false,
                     emptyMessage = "簡易リストは空です",
                     items = items,
+                    backgroundBitmap = background,
                 )
             }
         }

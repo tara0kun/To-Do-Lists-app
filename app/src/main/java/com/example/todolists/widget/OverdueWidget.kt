@@ -13,6 +13,7 @@ class OverdueWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val now = System.currentTimeMillis()
         val items = TaskDatabase.get(context).taskDao().overdueSnapshot(now, MAX_ITEMS)
+        val background = WidgetBackgroundLoader.load(context)
 
         provideContent {
             GlanceTheme {
@@ -24,6 +25,7 @@ class OverdueWidget : GlanceAppWidget() {
                     showMeta = true,
                     emptyMessage = "期限切れのタスクはありません",
                     items = items,
+                    backgroundBitmap = background,
                 )
             }
         }

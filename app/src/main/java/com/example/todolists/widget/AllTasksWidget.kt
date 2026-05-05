@@ -15,6 +15,7 @@ class AllTasksWidget : GlanceAppWidget() {
         val (todayStart, tomorrowStart) = todayBoundsMillis()
         val items = TaskDatabase.get(context).taskDao()
             .detailedVisibleSnapshot(todayStart, tomorrowStart, MAX_ITEMS)
+        val background = WidgetBackgroundLoader.load(context)
 
         provideContent {
             GlanceTheme {
@@ -26,6 +27,7 @@ class AllTasksWidget : GlanceAppWidget() {
                     showMeta = true,
                     emptyMessage = "未完了のタスクはありません",
                     items = items,
+                    backgroundBitmap = background,
                 )
             }
         }

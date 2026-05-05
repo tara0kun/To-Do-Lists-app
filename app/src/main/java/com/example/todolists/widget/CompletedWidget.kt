@@ -12,6 +12,7 @@ import com.example.todolists.ui.TaskTab
 class CompletedWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val items = TaskDatabase.get(context).taskDao().completedDetailedSnapshot(MAX_ITEMS)
+        val background = WidgetBackgroundLoader.load(context)
 
         provideContent {
             GlanceTheme {
@@ -23,6 +24,7 @@ class CompletedWidget : GlanceAppWidget() {
                     showMeta = true,
                     emptyMessage = "完了済みのタスクはありません",
                     items = items,
+                    backgroundBitmap = background,
                 )
             }
         }

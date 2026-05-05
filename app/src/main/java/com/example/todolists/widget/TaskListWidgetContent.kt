@@ -1,6 +1,7 @@
 package com.example.todolists.widget
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -11,6 +12,7 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.currentState
+import androidx.glance.layout.ContentScale
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
@@ -53,27 +55,52 @@ fun TaskListWidgetContent(
     showMeta: Boolean,
     emptyMessage: String,
     items: List<Task>,
+    backgroundBitmap: Bitmap? = null,
 ) {
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .background(GlanceTheme.colors.surface)
-            .cornerRadius(16.dp)
-            .padding(8.dp),
-    ) {
-        HeaderBar(
-            context = context,
-            title = title,
-            tab = tab,
-            addKind = addKind,
-        )
-        Spacer(GlanceModifier.height(4.dp))
-        if (items.isEmpty()) {
-            EmptyHint(emptyMessage)
-        } else {
-            LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-                items(items, itemId = { it.id }) { task ->
-                    TaskListWidgetRow(task = task, showMeta = showMeta)
+    Box(modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp)) {
+        if (backgroundBitmap != null) {
+            Image(
+                provider = ImageProvider(backgroundBitmap),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp),
+            )
+            // Semi-transparent scrim for text readability over the image.
+            Image(
+                provider = ImageProvider(R.drawable.widget_scrim),
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp),
+            )
+        }
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .let {
+                    if (backgroundBitmap == null) it.background(GlanceTheme.colors.surface) else it
+                }
+                .cornerRadius(16.dp)
+                .padding(8.dp),
+        ) {
+            HeaderBar(
+                context = context,
+                title = title,
+                tab = tab,
+                addKind = addKind,
+                hasBackground = backgroundBitmap != null,
+            )
+            Spacer(GlanceModifier.height(4.dp))
+            if (items.isEmpty()) {
+                EmptyHint(emptyMessage, hasBackground = backgroundBitmap != null)
+            } else {
+                LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
+                    items(items, itemId = { it.id }) { task ->
+                        TaskListWidgetRow(
+                            task = task,
+                            showMeta = showMeta,
+                            forceLightText = backgroundBitmap != null,
+                        )
+                    }
                 }
             }
         }
@@ -86,9 +113,11 @@ private fun HeaderBar(
     title: String,
     tab: TaskTab,
     addKind: AddKind,
+    hasBackground: Boolean,
 ) {
     val openTab = actionStartActivity(MainActivity.intentForTab(context, tab))
     val refreshAction = actionRunCallback<RefreshWidgetAction>()
+    val textColor = if (hasBackground) androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color.White) else GlanceTheme.colors.onSurface
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
@@ -99,7 +128,7 @@ private fun HeaderBar(
             text = title,
             modifier = GlanceModifier.defaultWeight().clickable(openTab),
             style = TextStyle(
-                color = GlanceTheme.colors.onSurface,
+                color = textColor,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
             ),
@@ -145,7 +174,7 @@ private fun HeaderBar(
 }
 
 @Composable
-private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
+private fun TaskListWidgetRow(task: Task, showMeta: Boolean, forceLightText: Boolean = false) {
     val state = currentState<Preferences>()
     val optimistic = state[ToggleTaskAction.optimisticKey(task.id)]
     val effectiveDone = optimistic ?: task.isDone
@@ -157,7 +186,16 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
         ),
     )
     val checkboxRes = if (effectiveDone) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked
-    val checkboxTint = if (effectiveDone) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
+    val whiteColor = androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color.White)
+    val whiteFaintColor = androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
+    val titleColor = if (forceLightText) whiteColor else GlanceTheme.colors.onSurface
+    val metaColor = if (forceLightText) whiteFaintColor else GlanceTheme.colors.onSurfaceVariant
+    val checkboxTint = when {
+        effectiveDone && forceLightText -> whiteColor
+        effectiveDone -> GlanceTheme.colors.primary
+        forceLightText -> whiteFaintColor
+        else -> GlanceTheme.colors.onSurfaceVariant
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
@@ -177,7 +215,7 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
                 text = task.title,
                 maxLines = 2,
                 style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
+                    color = titleColor,
                     fontSize = 14.sp,
                     textDecoration = if (effectiveDone) TextDecoration.LineThrough else TextDecoration.None,
                 ),
@@ -186,7 +224,7 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
                 Text(
                     text = formatCompactDue(task.dueAt),
                     style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
+                        color = metaColor,
                         fontSize = 11.sp,
                     ),
                     maxLines = 1,
@@ -197,7 +235,9 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
 }
 
 @Composable
-private fun EmptyHint(message: String) {
+private fun EmptyHint(message: String, hasBackground: Boolean = false) {
+    val whiteFaint = androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
+    val color = if (hasBackground) whiteFaint else GlanceTheme.colors.onSurfaceVariant
     Box(
         modifier = GlanceModifier.fillMaxSize().padding(8.dp),
         contentAlignment = Alignment.Center,
@@ -205,7 +245,7 @@ private fun EmptyHint(message: String) {
         Text(
             text = message,
             style = TextStyle(
-                color = GlanceTheme.colors.onSurfaceVariant,
+                color = color,
                 fontSize = 13.sp,
             ),
         )

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -82,6 +83,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
     var showAddSheet by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
     var showCalendarSettings by remember { mutableStateOf(false) }
+    var showWidgetBackground by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
     val isSimpleTab = uiState.selectedTab == TaskTab.SIMPLE
 
@@ -90,6 +92,9 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = { showWidgetBackground = true }) {
+                        Icon(Icons.Filled.Wallpaper, contentDescription = "ウィジェット背景")
+                    }
                     IconButton(onClick = { showCalendarSettings = true }) {
                         Icon(Icons.Filled.Event, contentDescription = "カレンダー連携先")
                     }
@@ -247,6 +252,10 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
 
     if (showCalendarSettings) {
         CalendarSettingsSheet(onDismiss = { showCalendarSettings = false })
+    }
+
+    if (showWidgetBackground) {
+        WidgetBackgroundSheet(onDismiss = { showWidgetBackground = false })
     }
 
     if (showSortSheet) {
