@@ -86,6 +86,7 @@ private fun HeaderBar(
     addKind: AddKind,
 ) {
     val openTab = actionStartActivity(MainActivity.intentForTab(context, tab))
+    val refreshAction = actionRunCallback<RefreshWidgetAction>()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
@@ -101,7 +102,23 @@ private fun HeaderBar(
                 fontSize = 14.sp,
             ),
         )
+        Box(
+            modifier = GlanceModifier
+                .size(32.dp)
+                .background(GlanceTheme.colors.surfaceVariant)
+                .cornerRadius(8.dp)
+                .clickable(refreshAction),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_widget_refresh),
+                contentDescription = "更新",
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurface),
+                modifier = GlanceModifier.size(16.dp),
+            )
+        }
         if (addKind != AddKind.NONE) {
+            Spacer(GlanceModifier.width(4.dp))
             val addIntent = QuickAddActivity.intent(
                 context = context,
                 simple = addKind == AddKind.SIMPLE,
