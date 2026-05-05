@@ -12,8 +12,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -173,6 +176,33 @@ private fun CropImageScreen(
                         translationY = offset.y
                     },
             )
+            // Visible crop boundary: a white border around the viewport plus
+            // L-shaped corner markers, so the user can see exactly which
+            // region will end up in the saved PNG.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .border(width = 1.dp, color = Color.White.copy(alpha = 0.6f)),
+            )
+            Canvas(modifier = Modifier.matchParentSize()) {
+                val len = 24.dp.toPx()
+                val thick = 4.dp.toPx()
+                val w = size.width
+                val h = size.height
+                val color = Color.White
+                // top-left
+                drawLine(color, Offset(0f, 0f), Offset(len, 0f), thick, cap = StrokeCap.Square)
+                drawLine(color, Offset(0f, 0f), Offset(0f, len), thick, cap = StrokeCap.Square)
+                // top-right
+                drawLine(color, Offset(w - len, 0f), Offset(w, 0f), thick, cap = StrokeCap.Square)
+                drawLine(color, Offset(w, 0f), Offset(w, len), thick, cap = StrokeCap.Square)
+                // bottom-left
+                drawLine(color, Offset(0f, h - len), Offset(0f, h), thick, cap = StrokeCap.Square)
+                drawLine(color, Offset(0f, h), Offset(len, h), thick, cap = StrokeCap.Square)
+                // bottom-right
+                drawLine(color, Offset(w - len, h), Offset(w, h), thick, cap = StrokeCap.Square)
+                drawLine(color, Offset(w, h - len), Offset(w, h), thick, cap = StrokeCap.Square)
+            }
         }
         Text(
             text = "ピンチで拡大、ドラッグで移動。表示されている枠の中身がウィジェットに使われます。",
