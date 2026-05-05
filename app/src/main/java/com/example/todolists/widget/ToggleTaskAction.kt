@@ -1,12 +1,12 @@
 package com.example.todolists.widget
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import android.widget.Toast
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.example.todolists.data.TaskRepository
 
 class ToggleTaskAction : ActionCallback {
@@ -16,21 +16,40 @@ class ToggleTaskAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val id = parameters[TaskIdKey] ?: return
+        val wasDone = parameters[WasDoneKey] ?: false
+        val newDone = !wasDone
+
+        // 1. Optimistic UI: store the new done value in Glance state immediately
+        //    so the checkbox flips before the slower DB / scheduler work runs.
+        runCatching {
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    this[optimisticKey(id)] = newDone
+                }.toPreferences()
+            }
+        }
+
+        // 2. Persist the toggle in Room (cancels/reschedules reminders, refreshes
+        //    other widgets, deletes calendar events when applicable).
         val repository = TaskRepository.get(context)
         val task = repository.findById(id) ?: return
-        // The new state we're moving to:
-        val willBeDone = !task.isDone
         repository.toggle(task)
-        // Toast confirms the tap registered even if the launcher hasn't
-        // re-rendered the widget yet (HyperOS / battery-savvy launchers
-        // can take a moment).
-        Handler(Looper.getMainLooper()).post {
-            val message = if (willBeDone) "✓ 完了にしました" else "未完了に戻しました"
-            Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT).show()
+
+        // 3. Drop the optimistic override now that the DB is in sync, so future
+        //    renders read straight from Room again.
+        runCatching {
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    remove(optimisticKey(id))
+                }.toPreferences()
+            }
         }
     }
 
     companion object {
         val TaskIdKey = ActionParameters.Key<Long>("taskId")
+        val WasDoneKey = ActionParameters.Key<Boolean>("wasDone")
+
+        fun optimisticKey(taskId: Long) = booleanPreferencesKey("opt_done_$taskId")
     }
 }

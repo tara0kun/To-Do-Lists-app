@@ -4,11 +4,13 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.currentState
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
@@ -144,11 +146,18 @@ private fun HeaderBar(
 
 @Composable
 private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
+    val state = currentState<Preferences>()
+    val optimistic = state[ToggleTaskAction.optimisticKey(task.id)]
+    val effectiveDone = optimistic ?: task.isDone
+
     val toggleAction = actionRunCallback<ToggleTaskAction>(
-        actionParametersOf(ToggleTaskAction.TaskIdKey to task.id),
+        actionParametersOf(
+            ToggleTaskAction.TaskIdKey to task.id,
+            ToggleTaskAction.WasDoneKey to effectiveDone,
+        ),
     )
-    val checkboxRes = if (task.isDone) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked
-    val checkboxTint = if (task.isDone) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
+    val checkboxRes = if (effectiveDone) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked
+    val checkboxTint = if (effectiveDone) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
@@ -158,7 +167,7 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
     ) {
         Image(
             provider = ImageProvider(checkboxRes),
-            contentDescription = if (task.isDone) "未完了に戻す" else "完了にする",
+            contentDescription = if (effectiveDone) "未完了に戻す" else "完了にする",
             colorFilter = ColorFilter.tint(checkboxTint),
             modifier = GlanceModifier.size(20.dp),
         )
@@ -170,7 +179,7 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean) {
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
                     fontSize = 14.sp,
-                    textDecoration = if (task.isDone) TextDecoration.LineThrough else TextDecoration.None,
+                    textDecoration = if (effectiveDone) TextDecoration.LineThrough else TextDecoration.None,
                 ),
             )
             if (showMeta && task.dueAt != null) {
