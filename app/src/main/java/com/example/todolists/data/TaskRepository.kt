@@ -113,15 +113,19 @@ class TaskRepository(
         dao.activeRemindable().forEach { scheduler.schedule(it) }
     }
 
-    private suspend fun refreshWidgets() = coroutineScope {
-        // Path A: Force Glance to consider state changed so it auto-recomposes.
-        launch { runCatching { touchWidgetState() } }
-        // Path B: Glance's own update API (renders RemoteViews and pushes).
-        launch { runCatching { SimpleListWidget().updateAll(context) } }
-        launch { runCatching { AllTasksWidget().updateAll(context) } }
-        launch { runCatching { OverdueWidget().updateAll(context) } }
-        launch { runCatching { CompletedWidget().updateAll(context) } }
-        // Path C: Direct AppWidgetManager broadcast as a safety net.
+    private suspend fun refreshWidgets() {
+        // Step 1: bump Glance state. This is what triggers Glance's own
+        // auto-recompose path (the same path that makes optimistic UI fast).
+        runCatching { touchWidgetState() }
+        // Step 2: render and push fresh RemoteViews via Glance's API.
+        coroutineScope {
+            launch { runCatching { SimpleListWidget().updateAll(context) } }
+            launch { runCatching { AllTasksWidget().updateAll(context) } }
+            launch { runCatching { OverdueWidget().updateAll(context) } }
+            launch { runCatching { CompletedWidget().updateAll(context) } }
+        }
+        // Step 3: foreground broadcast as a safety net for launchers that
+        // ignore the previous two paths.
         broadcastUpdate(SimpleListWidgetReceiver::class.java)
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
