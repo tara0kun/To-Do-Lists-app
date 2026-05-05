@@ -1,5 +1,6 @@
 package com.example.todolists.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,6 +108,13 @@ fun CalendarSettingsSheet(onDismiss: () -> Unit) {
                 TextButton(onClick = onDismiss) { Text("キャンセル") }
                 TextButton(onClick = {
                     settingsRepo.setSelectedCalendarId(selectedId)
+                    val label = when {
+                        selectedId == null -> "自動"
+                        else -> calendars.firstOrNull { it.id == selectedId }
+                            ?.let { "${it.displayName.ifBlank { it.accountName }} (${it.accountName})" }
+                            ?: "id=$selectedId"
+                    }
+                    Toast.makeText(context, "連携先を保存: $label", Toast.LENGTH_LONG).show()
                     onDismiss()
                 }) { Text("保存") }
             }

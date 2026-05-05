@@ -138,12 +138,14 @@ object CalendarIntegration {
     @Volatile private var lastWrittenCalendarLabel: String = ""
 
     private fun isCalendarValid(context: Context, calendarId: Long): Boolean = runCatching {
-        val uri = ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, calendarId)
         context.contentResolver.query(
-            uri,
-            arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL),
-            null,
-            null,
+            CalendarContract.Calendars.CONTENT_URI,
+            arrayOf(
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+            ),
+            "${CalendarContract.Calendars._ID} = ?",
+            arrayOf(calendarId.toString()),
             null,
         )?.use { c ->
             if (!c.moveToFirst()) return@use false
@@ -223,8 +225,13 @@ object CalendarIntegration {
             CalendarContract.Calendars.ACCOUNT_TYPE,
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
         )
-        val uri = ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, calendarId)
-        context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
+        context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            projection,
+            "${CalendarContract.Calendars._ID} = ?",
+            arrayOf(calendarId.toString()),
+            null,
+        )?.use { c ->
             if (c.moveToFirst()) {
                 val account = c.getString(0).orEmpty()
                 val type = c.getString(1).orEmpty()
