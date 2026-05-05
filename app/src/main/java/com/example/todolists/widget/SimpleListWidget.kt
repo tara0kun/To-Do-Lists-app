@@ -10,7 +10,7 @@ import com.example.todolists.ui.TaskTab
 
 class SimpleListWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val items = TaskDatabase.get(context).taskDao().simpleActiveSnapshot(MAX_ITEMS)
+        val items = TaskDatabase.get(context).taskDao().simpleVisibleSnapshot(MAX_ITEMS)
 
         provideContent {
             GlanceTheme {
@@ -27,5 +27,5 @@ class SimpleListWidget : GlanceAppWidget() {
         }
     }
 
-    companion object { private const val MAX_ITEMS = 20 }
+    companion object { private const val MAX_ITEMS = 30 }
 }

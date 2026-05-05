@@ -34,6 +34,25 @@ interface TaskDao {
     suspend fun deleteCompleted(): Int
 
     @Query(
+        "SELECT * FROM tasks WHERE isSimple = 1 " +
+            "ORDER BY isDone ASC, createdAt DESC LIMIT :limit"
+    )
+    suspend fun simpleVisibleSnapshot(limit: Int): List<Task>
+
+    @Query(
+        "SELECT * FROM tasks WHERE isSimple = 0 AND (" +
+            "isDone = 0 OR (" +
+            "isDone = 1 AND dueAt IS NOT NULL AND dueAt >= :todayStart AND dueAt < :tomorrowStart" +
+            ")) " +
+            "ORDER BY isDone ASC, priority DESC, dueAt IS NULL, dueAt ASC, createdAt DESC LIMIT :limit"
+    )
+    suspend fun detailedVisibleSnapshot(
+        todayStart: Long,
+        tomorrowStart: Long,
+        limit: Int,
+    ): List<Task>
+
+    @Query(
         "SELECT * FROM tasks WHERE isSimple = 1 AND isDone = 0 " +
             "ORDER BY createdAt DESC LIMIT :limit"
     )

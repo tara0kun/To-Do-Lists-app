@@ -8,10 +8,13 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.provideContent
 import com.example.todolists.data.TaskDatabase
 import com.example.todolists.ui.TaskTab
+import java.util.Calendar
 
 class AllTasksWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val items = TaskDatabase.get(context).taskDao().detailedActiveSnapshot(MAX_ITEMS)
+        val (todayStart, tomorrowStart) = todayBoundsMillis()
+        val items = TaskDatabase.get(context).taskDao()
+            .detailedVisibleSnapshot(todayStart, tomorrowStart, MAX_ITEMS)
 
         provideContent {
             GlanceTheme {
@@ -28,7 +31,19 @@ class AllTasksWidget : GlanceAppWidget() {
         }
     }
 
-    companion object { private const val MAX_ITEMS = 20 }
+    private fun todayBoundsMillis(): Pair<Long, Long> {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val todayStart = cal.timeInMillis
+        val tomorrowStart = todayStart + 24L * 60L * 60L * 1000L
+        return todayStart to tomorrowStart
+    }
+
+    companion object { private const val MAX_ITEMS = 30 }
 }
 
 class AllTasksWidgetReceiver : GlanceAppWidgetReceiver() {
