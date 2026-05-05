@@ -117,7 +117,7 @@ private fun HeaderBar(
 ) {
     val openTab = actionStartActivity(MainActivity.intentForTab(context, tab))
     val refreshAction = actionRunCallback<RefreshWidgetAction>()
-    val textColor = if (hasBackground) androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color.White) else GlanceTheme.colors.onSurface
+    val textColor = if (hasBackground) androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color.White) else GlanceTheme.colors.onSurface
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
@@ -186,8 +186,8 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean, forceLightText: Boo
         ),
     )
     val checkboxRes = if (effectiveDone) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked
-    val whiteColor = androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color.White)
-    val whiteFaintColor = androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
+    val whiteColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color.White)
+    val whiteFaintColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
     val titleColor = if (forceLightText) whiteColor else GlanceTheme.colors.onSurface
     val metaColor = if (forceLightText) whiteFaintColor else GlanceTheme.colors.onSurfaceVariant
     val checkboxTint = when {
@@ -236,7 +236,7 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean, forceLightText: Boo
 
 @Composable
 private fun EmptyHint(message: String, hasBackground: Boolean = false) {
-    val whiteFaint = androidx.glance.color.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
+    val whiteFaint = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
     val color = if (hasBackground) whiteFaint else GlanceTheme.colors.onSurfaceVariant
     Box(
         modifier = GlanceModifier.fillMaxSize().padding(8.dp),
