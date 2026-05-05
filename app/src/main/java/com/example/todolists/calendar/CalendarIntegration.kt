@@ -1,13 +1,16 @@
 package com.example.todolists.calendar
 
 import android.Manifest
+import android.accounts.Account
 import android.content.ActivityNotFoundException
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Bundle
 import android.provider.CalendarContract
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -85,12 +88,16 @@ object CalendarIntegration {
     suspend fun deleteEvent(context: Context, eventId: Long): Boolean =
         withContext(Dispatchers.IO) {
             val app = context.applicationContext
+            // Capture which calendar this event belongs to BEFORE we delete
+            // it, so we can ask its sync adapter to upload the deletion.
+            val calendarId = readEventCalendarId(app, eventId)
             val result = runCatching {
                 val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
                 app.contentResolver.delete(uri, null, null)
             }
             when {
                 result.isSuccess && (result.getOrDefault(0) ?: 0) > 0 -> {
+                    if (calendarId != null) requestCalendarSync(app, calendarId)
                     showToast(app, "カレンダーから予定を削除しました")
                     true
                 }
@@ -104,6 +111,16 @@ object CalendarIntegration {
                 }
             }
         }
+
+    private fun readEventCalendarId(context: Context, eventId: Long): Long? = runCatching {
+        context.contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            arrayOf(CalendarContract.Events.CALENDAR_ID),
+            "${CalendarContract.Events._ID} = ?",
+            arrayOf(eventId.toString()),
+            null,
+        )?.use { c -> if (c.moveToFirst()) c.getLong(0) else null }
+    }.getOrNull()
 
     private fun writeEventDirectAndReturnId(context: Context, task: Task, dueAt: Long): Long? = runCatching {
         val (calId, calLabel) = findWritableCalendar(context) ?: return@runCatching null
@@ -132,7 +149,38 @@ object CalendarIntegration {
         }
         // Persist where we wrote so the success toast can tell the user.
         lastWrittenCalendarLabel = calLabel
+        // Ask the Google sync adapter to push this event up to the server
+        // immediately. Without this, POCO/HyperOS may delay the sync and the
+        // event stays invisible inside Google Calendar for a long time.
+        requestCalendarSync(context, calId)
         eventId
+    }.getOrNull()
+
+    private fun requestCalendarSync(context: Context, calendarId: Long) = runCatching {
+        val (name, type) = readCalendarAccount(context, calendarId) ?: return@runCatching
+        if (name.isBlank() || type.isBlank()) return@runCatching
+        val account = Account(name, type)
+        val extras = Bundle().apply {
+            putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true)
+            putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
+        }
+        ContentResolver.requestSync(account, CalendarContract.AUTHORITY, extras)
+    }
+
+    private fun readCalendarAccount(context: Context, calendarId: Long): Pair<String, String>? = runCatching {
+        context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            arrayOf(
+                CalendarContract.Calendars.ACCOUNT_NAME,
+                CalendarContract.Calendars.ACCOUNT_TYPE,
+            ),
+            "${CalendarContract.Calendars._ID} = ?",
+            arrayOf(calendarId.toString()),
+            null,
+        )?.use { c ->
+            if (c.moveToFirst()) c.getString(0).orEmpty() to c.getString(1).orEmpty()
+            else null
+        }
     }.getOrNull()
 
     @Volatile private var lastWrittenCalendarLabel: String = ""
