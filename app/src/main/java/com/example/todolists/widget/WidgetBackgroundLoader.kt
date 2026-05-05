@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
  * RemoteViews bundles have a hard size limit (~1MB), so we never decode at
  * full resolution.
  */
-internal data class LoadedBackground(
+data class LoadedBackground(
     val bitmap: Bitmap,
     val scrimAlpha: Float,
     val fit: WidgetBackgroundFit,
