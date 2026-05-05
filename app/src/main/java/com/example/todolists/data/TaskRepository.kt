@@ -19,6 +19,7 @@ import com.example.todolists.widget.OverdueWidget
 import com.example.todolists.widget.OverdueWidgetReceiver
 import com.example.todolists.widget.SimpleListWidget
 import com.example.todolists.widget.SimpleListWidgetReceiver
+import com.example.todolists.widget.ToggleTaskAction
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -81,9 +82,12 @@ class TaskRepository(
 
     suspend fun toggle(task: Task) {
         val newDone = !task.isDone
+        // 1. App-side optimistic UI: paint the new state into widget state
+        //    BEFORE we touch the DB so the upcoming refresh renders with
+        //    the correct value even before the row is committed.
+        markOptimisticForWidgets(task.id, newDone)
+
         val existingEventId = task.calendarEventId
-        // When marking done, also remove the linked calendar event so the
-        // user's calendar reflects the completion.
         val cleanedEventId = if (newDone && existingEventId != null) {
             CalendarIntegration.deleteEvent(context, existingEventId)
             null
@@ -91,6 +95,10 @@ class TaskRepository(
             existingEventId
         }
         update(task.copy(isDone = newDone, calendarEventId = cleanedEventId))
+
+        // 2. Drop the optimistic override now that DB + widget refreshes
+        //    have caught up.
+        clearOptimisticForWidgets(task.id)
     }
 
     suspend fun delete(task: Task) {
@@ -130,6 +138,40 @@ class TaskRepository(
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
         broadcastUpdate(CompletedWidgetReceiver::class.java)
+    }
+
+    private suspend fun markOptimisticForWidgets(taskId: Long, isDone: Boolean) {
+        forEachLiveWidget { id ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    this[ToggleTaskAction.optimisticKey(taskId)] = isDone
+                }.toPreferences()
+            }
+        }
+    }
+
+    private suspend fun clearOptimisticForWidgets(taskId: Long) {
+        forEachLiveWidget { id ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    remove(ToggleTaskAction.optimisticKey(taskId))
+                }.toPreferences()
+            }
+        }
+    }
+
+    private suspend inline fun forEachLiveWidget(block: suspend (androidx.glance.GlanceId) -> Unit) {
+        val mgr = GlanceAppWidgetManager(context)
+        listOf(
+            SimpleListWidget::class.java,
+            AllTasksWidget::class.java,
+            OverdueWidget::class.java,
+            CompletedWidget::class.java,
+        ).forEach { cls ->
+            runCatching {
+                mgr.getGlanceIds(cls).forEach { id -> runCatching { block(id) } }
+            }
+        }
     }
 
     /**
