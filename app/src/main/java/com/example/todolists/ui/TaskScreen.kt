@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.NotificationImportant
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
@@ -80,6 +81,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
     var showAddSheet by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
+    var showCalendarSettings by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
     val isSimpleTab = uiState.selectedTab == TaskTab.SIMPLE
 
@@ -88,6 +90,9 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = { showCalendarSettings = true }) {
+                        Icon(Icons.Filled.Event, contentDescription = "カレンダー連携先")
+                    }
                     IconButton(onClick = {
                         com.example.todolists.notifications.NotificationDebug
                             .fireTestNotification(context)
@@ -238,6 +243,10 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             },
             submitLabel = "保存",
         )
+    }
+
+    if (showCalendarSettings) {
+        CalendarSettingsSheet(onDismiss = { showCalendarSettings = false })
     }
 
     if (showSortSheet) {

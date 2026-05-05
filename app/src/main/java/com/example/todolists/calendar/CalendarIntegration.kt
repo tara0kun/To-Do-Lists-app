@@ -11,6 +11,7 @@ import android.net.Uri
 import android.provider.CalendarContract
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import com.example.todolists.data.CalendarSettingsRepository
 import com.example.todolists.data.Task
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +137,32 @@ object CalendarIntegration {
 
     @Volatile private var lastWrittenCalendarLabel: String = ""
 
+    private fun isCalendarValid(context: Context, calendarId: Long): Boolean = runCatching {
+        val uri = ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, calendarId)
+        context.contentResolver.query(
+            uri,
+            arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL),
+            null,
+            null,
+            null,
+        )?.use { c ->
+            if (!c.moveToFirst()) return@use false
+            val level = c.getInt(1)
+            level >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
+        } ?: false
+    }.getOrDefault(false)
+
+    data class CalendarInfo(
+        val id: Long,
+        val displayName: String,
+        val accountName: String,
+        val accountType: String,
+        val isPrimary: Boolean,
+    ) {
+        val isGoogle: Boolean get() = accountType == "com.google"
+        val label: String get() = if (displayName.isBlank()) accountName else "$displayName"
+    }
+
     private fun insertReminder(context: Context, eventId: Long, minutesBefore: Int) {
         val values = ContentValues().apply {
             put(CalendarContract.Reminders.EVENT_ID, eventId)
@@ -144,6 +171,45 @@ object CalendarIntegration {
         }
         runCatching { context.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, values) }
     }
+
+    /** Public list of calendars the user is allowed to write to. */
+    suspend fun listAvailableCalendars(context: Context): List<CalendarInfo> =
+        withContext(Dispatchers.IO) {
+            val app = context.applicationContext
+            if (!hasWritePermission(app)) return@withContext emptyList()
+            val projection = arrayOf(
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                CalendarContract.Calendars.ACCOUNT_NAME,
+                CalendarContract.Calendars.ACCOUNT_TYPE,
+                CalendarContract.Calendars.IS_PRIMARY,
+            )
+            val sortOrder = "${CalendarContract.Calendars.IS_PRIMARY} DESC, " +
+                "${CalendarContract.Calendars.ACCOUNT_NAME} ASC, " +
+                "${CalendarContract.Calendars._ID} ASC"
+            val out = mutableListOf<CalendarInfo>()
+            runCatching {
+                app.contentResolver.query(
+                    CalendarContract.Calendars.CONTENT_URI,
+                    projection,
+                    "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= " +
+                        "${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}",
+                    null,
+                    sortOrder,
+                )?.use { c ->
+                    while (c.moveToNext()) {
+                        out += CalendarInfo(
+                            id = c.getLong(0),
+                            displayName = c.getString(1).orEmpty(),
+                            accountName = c.getString(2).orEmpty(),
+                            accountType = c.getString(3).orEmpty(),
+                            isPrimary = c.getInt(4) == 1,
+                        )
+                    }
+                }
+            }
+            out
+        }
 
     private fun findWritableCalendar(context: Context): Pair<Long, String>? {
         val id = findWritableCalendarId(context) ?: return null
@@ -170,6 +236,11 @@ object CalendarIntegration {
     }.getOrDefault("calendar id=$calendarId")
 
     private fun findWritableCalendarId(context: Context): Long? = runCatching {
+        // 0) If the user has explicitly chosen a calendar, honor that
+        //    (provided it's still writable).
+        val saved = CalendarSettingsRepository.get(context).selectedCalendarId.value
+        if (saved != null && isCalendarValid(context, saved)) return@runCatching saved
+
         val projection = arrayOf(CalendarContract.Calendars._ID)
         val sortOrder = "${CalendarContract.Calendars.IS_PRIMARY} DESC, " +
             "${CalendarContract.Calendars._ID} ASC"
