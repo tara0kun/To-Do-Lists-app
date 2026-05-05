@@ -61,7 +61,10 @@ object CalendarIntegration {
         if (hasWritePermission(app)) {
             val eventId = writeEventDirectAndReturnId(app, task, dueAt)
             if (eventId != null) {
-                showToast(app, "カレンダーに追加しました")
+                showToast(
+                    app,
+                    "カレンダーに追加: ${lastWrittenCalendarLabel.ifBlank { "id=$eventId" }}",
+                )
                 return@withContext eventId
             }
             showToast(app, "書き込めるカレンダーが見つかりません(Googleアカウント未設定?) — 確認画面で追加します")
@@ -102,7 +105,7 @@ object CalendarIntegration {
         }
 
     private fun writeEventDirectAndReturnId(context: Context, task: Task, dueAt: Long): Long? = runCatching {
-        val calId = findWritableCalendarId(context) ?: return@runCatching null
+        val (calId, calLabel) = findWritableCalendar(context) ?: return@runCatching null
         val values = ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, calId)
             put(CalendarContract.Events.TITLE, task.title)
@@ -126,8 +129,12 @@ object CalendarIntegration {
             val minutesBefore = ((dueAt - onDayMillis) / 60_000L).toInt().coerceAtLeast(0)
             insertReminder(context, eventId, minutesBefore = minutesBefore)
         }
+        // Persist where we wrote so the success toast can tell the user.
+        lastWrittenCalendarLabel = calLabel
         eventId
     }.getOrNull()
+
+    @Volatile private var lastWrittenCalendarLabel: String = ""
 
     private fun insertReminder(context: Context, eventId: Long, minutesBefore: Int) {
         val values = ContentValues().apply {
@@ -137,6 +144,30 @@ object CalendarIntegration {
         }
         runCatching { context.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, values) }
     }
+
+    private fun findWritableCalendar(context: Context): Pair<Long, String>? {
+        val id = findWritableCalendarId(context) ?: return null
+        val label = describeCalendar(context, id)
+        return id to label
+    }
+
+    private fun describeCalendar(context: Context, calendarId: Long): String = runCatching {
+        val projection = arrayOf(
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+        )
+        val uri = ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, calendarId)
+        context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                val account = c.getString(0).orEmpty()
+                val type = c.getString(1).orEmpty()
+                val display = c.getString(2).orEmpty()
+                return@runCatching "$display ($account, $type)"
+            }
+        }
+        "unknown calendar id=$calendarId"
+    }.getOrDefault("calendar id=$calendarId")
 
     private fun findWritableCalendarId(context: Context): Long? = runCatching {
         val projection = arrayOf(CalendarContract.Calendars._ID)
