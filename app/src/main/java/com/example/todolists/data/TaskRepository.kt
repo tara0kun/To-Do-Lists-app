@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.updateAll
@@ -125,12 +124,9 @@ class TaskRepository(
     private suspend fun refreshWidgets() {
         val t0 = System.currentTimeMillis()
         Log.d(TAG, "[$t0] refreshWidgets start")
-        // Step 1: bump Glance state. This is what triggers Glance's own
-        // auto-recompose path (the same path that makes optimistic UI fast).
-        val tStateStart = System.currentTimeMillis()
-        runCatching { touchWidgetState() }
-        Log.d(TAG, "[${System.currentTimeMillis()}] touchWidgetState done (${System.currentTimeMillis() - tStateStart}ms)")
-        // Step 2: render and push fresh RemoteViews via Glance's API.
+        // updateAll already triggers a recomposition that reads the latest
+        // state, so a separate "bump Glance state" step is redundant and
+        // just wastes 30–90ms in the toggle critical path.
         val tUpdateStart = System.currentTimeMillis()
         coroutineScope {
             launch {
@@ -159,8 +155,8 @@ class TaskRepository(
             }
         }
         Log.d(TAG, "[${System.currentTimeMillis()}] all updateAll done (${System.currentTimeMillis() - tUpdateStart}ms)")
-        // Step 3: foreground broadcast as a safety net for launchers that
-        // ignore the previous two paths.
+        // Foreground broadcast as a safety net for launchers that ignore
+        // the Glance update path.
         broadcastUpdate(SimpleListWidgetReceiver::class.java)
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
@@ -202,32 +198,6 @@ class TaskRepository(
         }
     }
 
-    /**
-     * Bumps a timestamp inside each widget's PreferencesGlanceStateDefinition.
-     * Glance treats any state change as a trigger for auto-recomposition, so
-     * touching this key forces all live widget instances to redraw using the
-     * current Room snapshot.
-     */
-    private suspend fun touchWidgetState() {
-        val mgr = GlanceAppWidgetManager(context)
-        listOf(
-            SimpleListWidget::class.java,
-            AllTasksWidget::class.java,
-            OverdueWidget::class.java,
-            CompletedWidget::class.java,
-        ).forEach { cls ->
-            runCatching {
-                mgr.getGlanceIds(cls).forEach { id ->
-                    updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
-                        prefs.toMutablePreferences().apply {
-                            this[TOUCH_KEY] = System.currentTimeMillis()
-                        }.toPreferences()
-                    }
-                }
-            }
-        }
-    }
-
     private fun broadcastUpdate(cls: Class<*>) {
         val component = ComponentName(context, cls)
         val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(component)
@@ -244,7 +214,6 @@ class TaskRepository(
 
     companion object {
         private const val TAG = "WidgetDbg"
-        private val TOUCH_KEY = longPreferencesKey("widget_touch")
 
         @Volatile private var INSTANCE: TaskRepository? = null
         fun get(context: Context): TaskRepository =
