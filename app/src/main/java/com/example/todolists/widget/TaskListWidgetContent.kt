@@ -16,6 +16,8 @@ import androidx.glance.layout.ContentScale
 import com.example.todolists.data.WidgetBackgroundFit
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.CheckBox
+import androidx.glance.appwidget.CheckboxDefaults
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
@@ -194,32 +196,34 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean, forceLightText: Boo
             ToggleTaskAction.WasDoneKey to effectiveDone,
         ),
     )
-    val checkboxRes = if (effectiveDone) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked
     val whiteColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color.White)
     val whiteFaintColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
     val titleColor = if (forceLightText) whiteColor else GlanceTheme.colors.onSurface
     val metaColor = if (forceLightText) whiteFaintColor else GlanceTheme.colors.onSurfaceVariant
-    val checkboxTint = when {
-        effectiveDone && forceLightText -> whiteColor
-        effectiveDone -> GlanceTheme.colors.primary
-        forceLightText -> whiteFaintColor
-        else -> GlanceTheme.colors.onSurfaceVariant
-    }
+    val checkColors = CheckboxDefaults.colors(
+        checkedColor = if (forceLightText) whiteColor else GlanceTheme.colors.primary,
+        uncheckedColor = if (forceLightText) whiteFaintColor else GlanceTheme.colors.onSurfaceVariant,
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 4.dp)
-            .clickable(toggleAction),
+            .padding(vertical = 4.dp, horizontal = 4.dp),
     ) {
-        Image(
-            provider = ImageProvider(checkboxRes),
-            contentDescription = if (effectiveDone) "未完了に戻す" else "完了にする",
-            colorFilter = ColorFilter.tint(checkboxTint),
-            modifier = GlanceModifier.size(20.dp),
+        // CompoundButton-backed checkbox: on Android 12+ the launcher
+        // toggles the visual state locally before our broadcast even
+        // fires, so the checkmark flips with no perceptible delay.
+        CheckBox(
+            checked = effectiveDone,
+            onCheckedChange = toggleAction,
+            colors = checkColors,
+            modifier = GlanceModifier.padding(end = 8.dp),
         )
-        Spacer(GlanceModifier.width(8.dp))
-        Column(modifier = GlanceModifier.defaultWeight()) {
+        Column(
+            modifier = GlanceModifier
+                .defaultWeight()
+                .clickable(toggleAction),
+        ) {
             Text(
                 text = task.title,
                 maxLines = 2,
