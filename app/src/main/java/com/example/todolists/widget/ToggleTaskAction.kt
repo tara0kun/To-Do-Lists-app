@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.ToggleableStateKey
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -21,21 +20,12 @@ class ToggleTaskAction : ActionCallback {
         val t0 = System.currentTimeMillis()
         val id = parameters[TaskIdKey]
         val wasDone = parameters[WasDoneKey]
-        // When invoked via Glance CheckBox / Switch on Android 12+, the
-        // launcher injects the new checked state under ToggleableStateKey.
-        // That's the most reliable source for newDone — using it avoids
-        // the "flip back" problem caused by inferring from a stale
-        // wasDone parameter.
-        val toggled = parameters[ToggleableStateKey]
-        Log.d(
-            TAG,
-            "[$t0] onAction enter id=$id wasDone=$wasDone toggleable=$toggled",
-        )
+        Log.d(TAG, "[$t0] onAction enter id=$id wasDone=$wasDone")
         if (id == null) {
             Log.w(TAG, "TaskIdKey missing in action parameters; aborting")
             return
         }
-        val newDone = toggled ?: !(wasDone ?: false)
+        val newDone = !(wasDone ?: false)
         val app = context.applicationContext
 
         // Persist the new done value into Glance state immediately. The
