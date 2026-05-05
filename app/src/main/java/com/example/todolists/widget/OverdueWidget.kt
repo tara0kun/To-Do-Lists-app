@@ -25,7 +25,7 @@ class OverdueWidget : GlanceAppWidget() {
                     showMeta = true,
                     emptyMessage = "期限切れのタスクはありません",
                     items = items,
-                    backgroundBitmap = background,
+                    background = background,
                 )
             }
         }

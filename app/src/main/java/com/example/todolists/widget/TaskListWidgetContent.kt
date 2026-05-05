@@ -1,8 +1,8 @@
 package com.example.todolists.widget
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -13,6 +13,7 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.currentState
 import androidx.glance.layout.ContentScale
+import com.example.todolists.data.WidgetBackgroundFit
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
@@ -55,30 +56,38 @@ fun TaskListWidgetContent(
     showMeta: Boolean,
     emptyMessage: String,
     items: List<Task>,
-    backgroundBitmap: Bitmap? = null,
+    background: LoadedBackground? = null,
 ) {
+    val hasBg = background != null
     Box(modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp)) {
-        if (backgroundBitmap != null) {
+        if (background != null) {
+            val scale = when (background.fit) {
+                WidgetBackgroundFit.CROP -> ContentScale.Crop
+                WidgetBackgroundFit.FIT -> ContentScale.Fit
+                WidgetBackgroundFit.FILL -> ContentScale.FillBounds
+            }
             Image(
-                provider = ImageProvider(backgroundBitmap),
+                provider = ImageProvider(background.bitmap),
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = scale,
                 modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp),
             )
-            // Semi-transparent scrim for text readability over the image.
-            Image(
-                provider = ImageProvider(R.drawable.widget_scrim),
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp),
-            )
+            // Variable-opacity scrim driven by user setting.
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .cornerRadius(16.dp)
+                    .background(
+                        androidx.glance.unit.ColorProvider(
+                            Color.Black.copy(alpha = background.scrimAlpha),
+                        ),
+                    ),
+            ) { }
         }
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .let {
-                    if (backgroundBitmap == null) it.background(GlanceTheme.colors.surface) else it
-                }
+                .let { if (!hasBg) it.background(GlanceTheme.colors.surface) else it }
                 .cornerRadius(16.dp)
                 .padding(8.dp),
         ) {
@@ -87,18 +96,18 @@ fun TaskListWidgetContent(
                 title = title,
                 tab = tab,
                 addKind = addKind,
-                hasBackground = backgroundBitmap != null,
+                hasBackground = hasBg,
             )
             Spacer(GlanceModifier.height(4.dp))
             if (items.isEmpty()) {
-                EmptyHint(emptyMessage, hasBackground = backgroundBitmap != null)
+                EmptyHint(emptyMessage, hasBackground = hasBg)
             } else {
                 LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                     items(items, itemId = { it.id }) { task ->
                         TaskListWidgetRow(
                             task = task,
                             showMeta = showMeta,
-                            forceLightText = backgroundBitmap != null,
+                            forceLightText = hasBg,
                         )
                     }
                 }

@@ -24,7 +24,7 @@ class CompletedWidget : GlanceAppWidget() {
                     showMeta = true,
                     emptyMessage = "完了済みのタスクはありません",
                     items = items,
-                    backgroundBitmap = background,
+                    background = background,
                 )
             }
         }

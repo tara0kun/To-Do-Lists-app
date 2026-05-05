@@ -23,7 +23,7 @@ class SimpleListWidget : GlanceAppWidget() {
                     showMeta = false,
                     emptyMessage = "簡易リストは空です",
                     items = items,
-                    backgroundBitmap = background,
+                    background = background,
                 )
             }
         }

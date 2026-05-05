@@ -27,7 +27,7 @@ class AllTasksWidget : GlanceAppWidget() {
                     showMeta = true,
                     emptyMessage = "未完了のタスクはありません",
                     items = items,
-                    backgroundBitmap = background,
+                    background = background,
                 )
             }
         }
