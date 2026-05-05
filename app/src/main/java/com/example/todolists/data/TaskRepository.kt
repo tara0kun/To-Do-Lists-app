@@ -82,10 +82,6 @@ class TaskRepository(
 
     suspend fun toggle(task: Task) {
         val newDone = !task.isDone
-        // 1. App-side optimistic UI: paint the new state into widget state
-        //    BEFORE we touch the DB so the upcoming refresh renders with
-        //    the correct value even before the row is committed.
-        markOptimisticForWidgets(task.id, newDone)
 
         val existingEventId = task.calendarEventId
         val cleanedEventId = if (newDone && existingEventId != null) {
@@ -95,10 +91,12 @@ class TaskRepository(
             existingEventId
         }
         update(task.copy(isDone = newDone, calendarEventId = cleanedEventId))
-
-        // 2. Drop the optimistic override now that DB + widget refreshes
-        //    have caught up.
-        clearOptimisticForWidgets(task.id)
+        // Note: we no longer touch widget optimistic keys here. The
+        // calling widget's optimistic key is set (and intentionally
+        // left in place) by ToggleTaskAction; other widget instances
+        // pick up the new state via the DB-backed refreshWidgets path.
+        // Clearing the optimistic key here was racing with Glance's
+        // post-action recompose and causing CheckBox flip-back.
     }
 
     suspend fun delete(task: Task) {
