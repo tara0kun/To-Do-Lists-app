@@ -200,10 +200,18 @@ private fun TaskListWidgetRow(task: Task, showMeta: Boolean, forceLightText: Boo
     val whiteFaintColor = androidx.glance.unit.ColorProvider(androidx.compose.ui.graphics.Color(0xFFE0E0E0))
     val titleColor = if (forceLightText) whiteColor else GlanceTheme.colors.onSurface
     val metaColor = if (forceLightText) whiteFaintColor else GlanceTheme.colors.onSurfaceVariant
-    val checkColors = CheckboxDefaults.colors(
-        checkedColor = if (forceLightText) whiteColor else GlanceTheme.colors.primary,
-        uncheckedColor = if (forceLightText) whiteFaintColor else GlanceTheme.colors.onSurfaceVariant,
-    )
+    // CheckboxDefaults.colors() rejects resource-backed ColorProviders
+    // (which is what GlanceTheme.colors.* are), so when we want to override
+    // we must pass fixed ColorProviders. With a background image we want
+    // white-on-photo; without one we fall back to Glance's defaults.
+    val checkColors = if (forceLightText) {
+        CheckboxDefaults.colors(
+            checkedColor = whiteColor,
+            uncheckedColor = whiteFaintColor,
+        )
+    } else {
+        CheckboxDefaults.colors()
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
