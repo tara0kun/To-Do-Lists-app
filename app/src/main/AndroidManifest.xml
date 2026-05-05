@@ -118,6 +118,11 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:launchMode="singleTask" />
+
+        <activity
+            android:name=".ui.CropImageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ToDoListsApp" />
     </application>
 
 </manifest>

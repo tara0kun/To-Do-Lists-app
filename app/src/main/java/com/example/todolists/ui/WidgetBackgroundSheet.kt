@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.todolists.data.WidgetBackgroundFit
 import com.example.todolists.data.WidgetBackgroundRepository
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +41,13 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val repo = remember { WidgetBackgroundRepository.get(context) }
     val state by repo.state.collectAsState()
+
+    val cropLauncher = rememberLauncherForActivityResult(CropImageActivity.Contract) { result: Uri? ->
+        if (result != null) {
+            repo.setBackgroundUri(result)
+            Toast.makeText(context, "背景画像を更新しました", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -51,8 +59,7 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION,
                 )
             }
-            repo.setBackgroundUri(uri)
-            Toast.makeText(context, "背景画像を更新しました", Toast.LENGTH_SHORT).show()
+            cropLauncher.launch(uri)
         }
     }
 
@@ -83,6 +90,7 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
                 if (state.uri != null) {
                     OutlinedButton(
                         onClick = {
+                            File(context.filesDir, CropImageActivity.OUTPUT_FILE_NAME).delete()
                             repo.setBackgroundUri(null)
                             Toast.makeText(context, "背景画像を解除しました", Toast.LENGTH_SHORT).show()
                         },
