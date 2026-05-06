@@ -13,6 +13,8 @@ import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.example.todolists.MainActivity
 import com.example.todolists.R
+import com.example.todolists.data.WidgetBackgroundRepository
+import com.example.todolists.data.WidgetForegroundMode
 import com.example.todolists.ui.TaskTab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -55,8 +57,11 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
 
     private fun updateOne(context: Context, mgr: AppWidgetManager, id: Int) {
         Log.d(tag, "updateOne id=$id start")
+        val fgMode = runCatching {
+            WidgetBackgroundRepository.get(context).state.value.foregroundMode
+        }.getOrDefault(WidgetForegroundMode.AUTO)
         runCatching {
-            val views = buildBaseViews(context, id)
+            val views = buildBaseViews(context, id, fgMode, hasBg = false)
             mgr.updateAppWidget(id, views)
             mgr.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
         }.onFailure { Log.e(tag, "updateOne id=$id failed", it) }
@@ -66,8 +71,8 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         WidgetWorkScope.launch {
             val bg = WidgetBackgroundLoader.load(context)
             if (bg != null) {
-                val withBg = buildBaseViews(context, id).apply {
-                    applyBackground(this, context, bg)
+                val withBg = buildBaseViews(context, id, fgMode, hasBg = true).apply {
+                    applyBackground(this, bg)
                 }
                 withContext(Dispatchers.Main) {
                     mgr.updateAppWidget(id, withBg)
@@ -76,13 +81,23 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         }
     }
 
-    private fun buildBaseViews(context: Context, id: Int): RemoteViews {
+    private fun buildBaseViews(
+        context: Context,
+        id: Int,
+        fgMode: WidgetForegroundMode,
+        hasBg: Boolean,
+    ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_root)
+        val fgPrimary = foregroundPrimary(context, fgMode, hasBg)
+        val fgSecondary = foregroundSecondary(context, fgMode, hasBg)
 
         views.setTextViewText(R.id.widget_title, title)
-        views.setTextColor(R.id.widget_title, context.getColor(R.color.widget_text_primary))
+        views.setTextColor(R.id.widget_title, fgPrimary)
         views.setTextViewText(R.id.widget_empty, emptyMessage)
-        views.setTextColor(R.id.widget_empty, context.getColor(R.color.widget_text_secondary))
+        views.setTextColor(R.id.widget_empty, fgSecondary)
+        // Tint the header icons to match the title.
+        views.setInt(R.id.widget_btn_refresh, "setColorFilter", fgPrimary)
+        views.setInt(R.id.widget_btn_add, "setColorFilter", fgPrimary)
 
         // Title tap → open the app on the matching tab.
         views.setOnClickPendingIntent(
@@ -160,11 +175,7 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         return views
     }
 
-    private fun applyBackground(
-        views: RemoteViews,
-        context: Context,
-        bg: LoadedBackground,
-    ) {
+    private fun applyBackground(views: RemoteViews, bg: LoadedBackground) {
         views.setImageViewBitmap(R.id.widget_bg_image, bg.bitmap)
         views.setViewVisibility(R.id.widget_bg_image, View.VISIBLE)
         val alphaInt = (bg.scrimAlpha * 255).toInt().coerceIn(0, 255)
@@ -174,14 +185,33 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
             alphaInt shl 24,
         )
         views.setViewVisibility(R.id.widget_bg_scrim, View.VISIBLE)
-        // Light text over the photo.
-        views.setTextColor(
-            R.id.widget_title,
-            context.getColor(R.color.widget_text_on_image),
-        )
-        views.setTextColor(
-            R.id.widget_empty,
-            context.getColor(R.color.widget_text_on_image_dim),
-        )
+    }
+
+    private fun foregroundPrimary(
+        context: Context,
+        mode: WidgetForegroundMode,
+        hasBg: Boolean,
+    ): Int = when (mode) {
+        WidgetForegroundMode.AUTO ->
+            if (hasBg) context.getColor(R.color.widget_text_on_image)
+            else context.getColor(R.color.widget_text_primary)
+        WidgetForegroundMode.LIGHT ->
+            context.getColor(R.color.widget_text_on_image)
+        WidgetForegroundMode.DARK ->
+            android.graphics.Color.BLACK
+    }
+
+    private fun foregroundSecondary(
+        context: Context,
+        mode: WidgetForegroundMode,
+        hasBg: Boolean,
+    ): Int = when (mode) {
+        WidgetForegroundMode.AUTO ->
+            if (hasBg) context.getColor(R.color.widget_text_on_image_dim)
+            else context.getColor(R.color.widget_text_secondary)
+        WidgetForegroundMode.LIGHT ->
+            context.getColor(R.color.widget_text_on_image_dim)
+        WidgetForegroundMode.DARK ->
+            android.graphics.Color.parseColor("#FF555555")
     }
 }

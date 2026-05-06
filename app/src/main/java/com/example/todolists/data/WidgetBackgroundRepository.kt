@@ -16,10 +16,22 @@ enum class WidgetBackgroundFit(val label: String) {
     FILL("引き伸ばし"),
 }
 
+enum class WidgetForegroundMode(val label: String) {
+    /** 背景画像があれば白系、なければシステムテーマに追従。 */
+    AUTO("自動 (背景に応じて切替)"),
+    /** タイトル・アイコン・空メッセージを常に白系に。 */
+    LIGHT("白系 (明るい色)"),
+    /** タイトル・アイコン・空メッセージを常に黒系に。 */
+    DARK("黒系 (暗い色)");
+
+    companion object { val DEFAULT = AUTO }
+}
+
 data class WidgetBackgroundSettings(
     val uri: Uri? = null,
     val scrimAlpha: Float = 0.50f,
     val fit: WidgetBackgroundFit = WidgetBackgroundFit.CROP,
+    val foregroundMode: WidgetForegroundMode = WidgetForegroundMode.DEFAULT,
 )
 
 class WidgetBackgroundRepository private constructor(context: Context) {
@@ -39,6 +51,7 @@ class WidgetBackgroundRepository private constructor(context: Context) {
     fun setBackgroundUri(uri: Uri?) = update { it.copy(uri = uri) }
     fun setScrimAlpha(alpha: Float) = update { it.copy(scrimAlpha = alpha.coerceIn(0f, 1f)) }
     fun setFit(fit: WidgetBackgroundFit) = update { it.copy(fit = fit) }
+    fun setForegroundMode(mode: WidgetForegroundMode) = update { it.copy(foregroundMode = mode) }
 
     private fun update(transform: (WidgetBackgroundSettings) -> WidgetBackgroundSettings) {
         val next = transform(_state.value)
@@ -46,6 +59,7 @@ class WidgetBackgroundRepository private constructor(context: Context) {
             if (next.uri == null) remove(KEY_URI) else putString(KEY_URI, next.uri.toString())
             putFloat(KEY_SCRIM, next.scrimAlpha)
             putString(KEY_FIT, next.fit.name)
+            putString(KEY_FG_MODE, next.foregroundMode.name)
         }.apply()
         _state.value = next
         _backgroundUriFlow.value = next.uri
@@ -57,7 +71,15 @@ class WidgetBackgroundRepository private constructor(context: Context) {
         val fit = prefs.getString(KEY_FIT, null)
             ?.let { runCatching { WidgetBackgroundFit.valueOf(it) }.getOrNull() }
             ?: WidgetBackgroundFit.CROP
-        return WidgetBackgroundSettings(uri = uri, scrimAlpha = scrim, fit = fit)
+        val fgMode = prefs.getString(KEY_FG_MODE, null)
+            ?.let { runCatching { WidgetForegroundMode.valueOf(it) }.getOrNull() }
+            ?: WidgetForegroundMode.DEFAULT
+        return WidgetBackgroundSettings(
+            uri = uri,
+            scrimAlpha = scrim,
+            fit = fit,
+            foregroundMode = fgMode,
+        )
     }
 
     companion object {
@@ -65,6 +87,7 @@ class WidgetBackgroundRepository private constructor(context: Context) {
         private const val KEY_URI = "background_uri"
         private const val KEY_SCRIM = "scrim_alpha"
         private const val KEY_FIT = "fit"
+        private const val KEY_FG_MODE = "fg_mode"
 
         @Volatile private var INSTANCE: WidgetBackgroundRepository? = null
         fun get(context: Context): WidgetBackgroundRepository =

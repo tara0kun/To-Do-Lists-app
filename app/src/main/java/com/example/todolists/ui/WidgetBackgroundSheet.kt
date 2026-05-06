@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.todolists.data.WidgetBackgroundFit
 import com.example.todolists.data.WidgetBackgroundRepository
+import com.example.todolists.data.WidgetForegroundMode
 import com.example.todolists.widget.WidgetUpdateHelper
 import java.io.File
 
@@ -99,6 +100,36 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
                         },
                         modifier = Modifier.weight(1f),
                     ) { Text("解除") }
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+            Text("文字・アイコンの色", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "背景画像によっては既定だと見えにくくなる場合があります。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            WidgetForegroundMode.values().forEach { mode ->
+                val pickMode = {
+                    repo.setForegroundMode(mode)
+                    WidgetUpdateHelper.forceFullUpdate(context)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = state.foregroundMode == mode,
+                            onClick = pickMode,
+                        )
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = state.foregroundMode == mode,
+                        onClick = pickMode,
+                    )
+                    Text(mode.label, modifier = Modifier.padding(start = 8.dp))
                 }
             }
 

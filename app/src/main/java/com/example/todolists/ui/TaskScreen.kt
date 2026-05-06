@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.NotificationImportant
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Sort
@@ -84,6 +85,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
     var showSortSheet by remember { mutableStateOf(false) }
     var showCalendarSettings by remember { mutableStateOf(false) }
     var showWidgetBackground by remember { mutableStateOf(false) }
+    var showAppearance by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
     val isSimpleTab = uiState.selectedTab == TaskTab.SIMPLE
 
@@ -92,6 +94,9 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = { showAppearance = true }) {
+                        Icon(Icons.Filled.Palette, contentDescription = "外観")
+                    }
                     IconButton(onClick = { showWidgetBackground = true }) {
                         Icon(Icons.Filled.Wallpaper, contentDescription = "ウィジェット背景")
                     }
@@ -256,6 +261,10 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
 
     if (showWidgetBackground) {
         WidgetBackgroundSheet(onDismiss = { showWidgetBackground = false })
+    }
+
+    if (showAppearance) {
+        AppearanceSheet(onDismiss = { showAppearance = false })
     }
 
     if (showSortSheet) {

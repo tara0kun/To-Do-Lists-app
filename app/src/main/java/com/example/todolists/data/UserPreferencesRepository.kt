@@ -17,10 +17,19 @@ enum class SortMode(val label: String) {
     }
 }
 
+enum class AppTheme(val label: String) {
+    SYSTEM("システムに合わせる"),
+    LIGHT("ライト"),
+    DARK("ダーク");
+
+    companion object { val DEFAULT = SYSTEM }
+}
+
 data class UserPreferences(
     val sortMode: SortMode = SortMode.DEFAULT,
     val separateCompleted: Boolean = true,
     val overdueOnTop: Boolean = true,
+    val appTheme: AppTheme = AppTheme.DEFAULT,
 )
 
 class UserPreferencesRepository private constructor(context: Context) {
@@ -33,6 +42,7 @@ class UserPreferencesRepository private constructor(context: Context) {
     fun setSortMode(mode: SortMode) = update { it.copy(sortMode = mode) }
     fun setSeparateCompleted(value: Boolean) = update { it.copy(separateCompleted = value) }
     fun setOverdueOnTop(value: Boolean) = update { it.copy(overdueOnTop = value) }
+    fun setAppTheme(theme: AppTheme) = update { it.copy(appTheme = theme) }
 
     private fun update(transform: (UserPreferences) -> UserPreferences) {
         val next = transform(_state.value)
@@ -40,6 +50,7 @@ class UserPreferencesRepository private constructor(context: Context) {
             .putString(KEY_SORT, next.sortMode.name)
             .putBoolean(KEY_SEPARATE, next.separateCompleted)
             .putBoolean(KEY_OVERDUE_TOP, next.overdueOnTop)
+            .putString(KEY_APP_THEME, next.appTheme.name)
             .apply()
         _state.value = next
     }
@@ -50,6 +61,9 @@ class UserPreferencesRepository private constructor(context: Context) {
             ?: SortMode.DEFAULT,
         separateCompleted = prefs.getBoolean(KEY_SEPARATE, true),
         overdueOnTop = prefs.getBoolean(KEY_OVERDUE_TOP, true),
+        appTheme = prefs.getString(KEY_APP_THEME, null)
+            ?.let { runCatching { AppTheme.valueOf(it) }.getOrNull() }
+            ?: AppTheme.DEFAULT,
     )
 
     companion object {
@@ -57,6 +71,7 @@ class UserPreferencesRepository private constructor(context: Context) {
         private const val KEY_SORT = "sort_mode"
         private const val KEY_SEPARATE = "separate_completed"
         private const val KEY_OVERDUE_TOP = "overdue_on_top"
+        private const val KEY_APP_THEME = "app_theme"
 
         @Volatile private var INSTANCE: UserPreferencesRepository? = null
         fun get(context: Context): UserPreferencesRepository =
