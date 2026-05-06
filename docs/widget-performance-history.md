@@ -380,6 +380,8 @@ launcher が次の vsync で描画:                       〜16ms
 
 ## 6. コミット履歴（主要なもの）
 
+### Glance 時代（試行 1〜13）
+
 | コミット | 内容 |
 |---|---|
 | `c1523e1` | 診断ログ `WidgetDbg` を全経路に挿入 |
@@ -390,3 +392,58 @@ launcher が次の vsync で描画:                       〜16ms
 | `c4785d4` | Glance 1.1.1 で公開されていない `ToggleableStateKey` 参照を削除 |
 | `c5a48a4` | `QuickAddActivity` の `delay(400)` を削除 |
 | `46f762c` | クロップ枠を実際のウィジェット形状に合わせる |
+| `87d7e03` | この記録ドキュメント自体 |
+
+---
+
+## 7. 第 2 章：Glance を捨てて従来型に書き直し
+
+調査の結果、**「リスト型 widget で即反映」を実現しているアプリは全て `AppWidgetProvider` + `RemoteViewsService` を使っている**ことが判明（Google Tasks / Keep / Calendar / Gmail / Spotify 等、Glance を使っているメジャーアプリは存在しない）。
+
+Glance は Compose の延長で書ける利便性はあるが、**毎回 RemoteViews ツリー全体を投げ直す**アーキテクチャがリスト widget では致命的。`notifyAppWidgetViewDataChanged` のような差分更新 API も無い。
+
+### 書き直し作業（Phase 1〜3）
+
+| Phase | 内容 |
+|---|---|
+| **1** | `SimpleListWidgetReceiver` を `AppWidgetProvider` に書き直し。`SimpleListService` (`RemoteViewsService`) + factory を新規追加。チェックボックス → `setOnCheckedChangeResponse` で本物のローカルトグル。`ToggleTaskReceiver` で DB 書き込み。`WidgetUpdateHelper` で 4 widget 共通の更新エントリ。 |
+| **2** | 共通スキャフォールド `BaseTaskWidgetReceiver` / `BaseTaskListService` / `BaseTaskListFactory` を抽出。`AllTasks` / `Overdue` / `Completed` も同じパターンで書き直し（各サブクラスは 10〜15 行）。 |
+| **3** | Glance 関連のクラス（`AllTasksWidget` / `OverdueWidget` / `CompletedWidget` / `TaskListWidgetContent` / `ToggleTaskAction` / `RefreshWidgetAction`）を全削除。`build.gradle.kts` から `androidx.glance:*` を削除。`TaskRepository.refreshWidgets` を `WidgetUpdateHelper.notifyDataChanged()` 1 行に短縮。 |
+
+### 書き直し中につまずいた点
+
+- **`Space` view が RemoteViews allowlist に無い**：レイアウトの `<Space>` を `layout_marginStart` / `layout_marginTop` に置き換え。
+- **`createFactory` の return 型推論エラー**：`private class` を返す `public fun` だと「private-in-file 型を晒している」とコンパイラが拒否。明示的に `RemoteViewsFactory` を書く必要があった。
+- **`minSdk` 26 → 31**：`setCompoundButtonChecked` / `setOnCheckedChangeResponse` が Android 12+ 必須。広い互換性を捨ててクリーンな実装を取った。
+
+### 結果
+
+| 項目 | Before（Glance） | After（従来型） |
+|---|---|---|
+| **タップ → チェック反映** | 〜200ms（IPC 待ち） | **数 ms（ランチャーがローカルでトグル）** |
+| **タスク追加 → リスト出現** | 数秒〜数十秒（ランチャー次第） | **〜100ms（差分更新）** |
+| **削除** | 同上 | 同上 |
+| ウィジェット背景画像（任意） | ✅ | ✅ |
+| ウィジェットのアスペクト比連動クロップ | ✅ | ✅ |
+
+体感が「Google Tasks 並み」になった。
+
+### Phase 4：UX polish
+
+| コミット | 内容 |
+|---|---|
+| `c70406e` | アプリ全体の **ライト / ダーク / システム** テーマ切替（`AppearanceSheet`）+ ウィジェットの **文字・アイコン色（自動 / 白系 / 黒系）** 設定を追加 |
+
+### 学んだこと（追加）
+
+7. **「とりあえず動く」と「実用に耐える」は別**
+   - Glance ベースの実装は「動く」までは速かったが、性能要件を満たすには根本から書き直す必要があった
+   - 動くだけのコードと納得して使えるコードは別物
+
+8. **共通スキャフォールドはサブクラスが 3 個以上で価値が出る**
+   - SimpleList 1 個だけのときは Provider と Service を直書きしても問題なし
+   - AllTasks / Overdue / Completed が同じパターンで増えた瞬間、Base クラスに括り出す価値が明確になった
+
+9. **`<Space>` のような細かい RemoteViews 制約に注意**
+   - RemoteViews のホワイトリストに無い view を 1 つ含むだけで widget 全体が「読み込めません」になる
+   - レイアウトを書く時はホワイトリスト（`FrameLayout` / `LinearLayout` / `RelativeLayout` / `GridLayout` / `TextView` / `ImageView` / `ImageButton` / `Button` / `ProgressBar` / `ListView` / `GridView` / `StackView` / `AnalogClock` / `TextClock` / `Chronometer` / `ViewFlipper` / `AdapterViewFlipper` / `CheckBox` / `RadioButton` / `Switch`）を意識する

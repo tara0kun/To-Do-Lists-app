@@ -24,12 +24,8 @@ abstract class BaseTaskListService : RemoteViewsService() {
 
     abstract fun createFactory(context: Context): RemoteViewsFactory
 
-    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
-        Log.d(TAG, "${javaClass.simpleName}.onGetViewFactory data=${intent.data}")
-        return createFactory(applicationContext)
-    }
-
-    private companion object { const val TAG = "TaskListSvc" }
+    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
+        createFactory(applicationContext)
 }
 
 abstract class BaseTaskListFactory(
@@ -47,19 +43,15 @@ abstract class BaseTaskListFactory(
     /** Worker-thread DB query for the latest snapshot. */
     protected abstract suspend fun fetchItems(): List<Task>
 
-    override fun onCreate() {
-        Log.d(tag, "factory onCreate")
-    }
+    override fun onCreate() = Unit
 
     override fun onDestroy() {
-        Log.d(tag, "factory onDestroy")
         items = emptyList()
     }
 
     override fun onDataSetChanged() {
         runCatching {
             items = runBlocking { fetchItems() }
-            Log.d(tag, "onDataSetChanged loaded ${items.size} items")
         }.onFailure { Log.e(tag, "onDataSetChanged failed", it) }
     }
 

@@ -41,7 +41,6 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
-        Log.d(tag, "onUpdate ids=${appWidgetIds.toList()}")
         appWidgetIds.forEach { id -> updateOne(context, appWidgetManager, id) }
     }
 
@@ -51,12 +50,10 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle?,
     ) {
-        Log.d(tag, "onAppWidgetOptionsChanged id=$appWidgetId")
         updateOne(context, appWidgetManager, appWidgetId)
     }
 
     private fun updateOne(context: Context, mgr: AppWidgetManager, id: Int) {
-        Log.d(tag, "updateOne id=$id start")
         val fgMode = runCatching {
             WidgetBackgroundRepository.get(context).state.value.foregroundMode
         }.getOrDefault(WidgetForegroundMode.AUTO)
