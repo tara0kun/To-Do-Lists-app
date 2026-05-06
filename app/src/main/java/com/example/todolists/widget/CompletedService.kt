@@ -1,11 +1,13 @@
 package com.example.todolists.widget
 
 import android.content.Context
+import android.widget.RemoteViewsService.RemoteViewsFactory
 import com.example.todolists.data.Task
 import com.example.todolists.data.TaskDatabase
 
 class CompletedService : BaseTaskListService() {
-    override fun createFactory(context: Context) = CompletedFactory(context)
+    override fun createFactory(context: Context): RemoteViewsFactory =
+        CompletedFactory(context)
 }
 
 private class CompletedFactory(context: Context) : BaseTaskListFactory(context) {
