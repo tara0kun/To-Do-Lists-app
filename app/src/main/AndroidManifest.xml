@@ -111,6 +111,20 @@
                 android:resource="@xml/completed_widget_info" />
         </receiver>
 
+        <!-- V2 widget infrastructure (RemoteViewsService + toggle receiver). -->
+        <service
+            android:name=".widget.SimpleListService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <receiver
+            android:name=".widget.ToggleTaskReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.todolists.action.WIDGET_TOGGLE" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".widget.QuickAddActivity"
             android:exported="false"

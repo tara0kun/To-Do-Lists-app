@@ -4,11 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.util.Log
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.updateAll
-import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.example.todolists.calendar.CalendarIntegration
 import com.example.todolists.notifications.ReminderScheduler
 import com.example.todolists.widget.AllTasksWidget
@@ -17,9 +13,7 @@ import com.example.todolists.widget.CompletedWidget
 import com.example.todolists.widget.CompletedWidgetReceiver
 import com.example.todolists.widget.OverdueWidget
 import com.example.todolists.widget.OverdueWidgetReceiver
-import com.example.todolists.widget.SimpleListWidget
-import com.example.todolists.widget.SimpleListWidgetReceiver
-import com.example.todolists.widget.ToggleTaskAction
+import com.example.todolists.widget.WidgetUpdateHelper
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -120,80 +114,20 @@ class TaskRepository(
     }
 
     private suspend fun refreshWidgets() {
-        val t0 = System.currentTimeMillis()
-        Log.d(TAG, "[$t0] refreshWidgets start")
-        // updateAll already triggers a recomposition that reads the latest
-        // state, so a separate "bump Glance state" step is redundant and
-        // just wastes 30–90ms in the toggle critical path.
-        val tUpdateStart = System.currentTimeMillis()
+        // V2 widgets (RemoteViewsService-backed): just notify the list view,
+        // launcher does an incremental refresh of just the items. This is
+        // the path that gives Google-Tasks-style instant reflection.
+        WidgetUpdateHelper.notifyDataChanged(context)
+
+        // V1 (Glance) widgets that haven't migrated yet: full updateAll.
         coroutineScope {
-            launch {
-                val s = System.currentTimeMillis()
-                runCatching { SimpleListWidget().updateAll(context) }
-                    .onFailure { Log.e(TAG, "Simple updateAll failed", it) }
-                Log.d(TAG, "Simple updateAll ${System.currentTimeMillis() - s}ms")
-            }
-            launch {
-                val s = System.currentTimeMillis()
-                runCatching { AllTasksWidget().updateAll(context) }
-                    .onFailure { Log.e(TAG, "AllTasks updateAll failed", it) }
-                Log.d(TAG, "AllTasks updateAll ${System.currentTimeMillis() - s}ms")
-            }
-            launch {
-                val s = System.currentTimeMillis()
-                runCatching { OverdueWidget().updateAll(context) }
-                    .onFailure { Log.e(TAG, "Overdue updateAll failed", it) }
-                Log.d(TAG, "Overdue updateAll ${System.currentTimeMillis() - s}ms")
-            }
-            launch {
-                val s = System.currentTimeMillis()
-                runCatching { CompletedWidget().updateAll(context) }
-                    .onFailure { Log.e(TAG, "Completed updateAll failed", it) }
-                Log.d(TAG, "Completed updateAll ${System.currentTimeMillis() - s}ms")
-            }
+            launch { runCatching { AllTasksWidget().updateAll(context) } }
+            launch { runCatching { OverdueWidget().updateAll(context) } }
+            launch { runCatching { CompletedWidget().updateAll(context) } }
         }
-        Log.d(TAG, "[${System.currentTimeMillis()}] all updateAll done (${System.currentTimeMillis() - tUpdateStart}ms)")
-        // Foreground broadcast as a safety net for launchers that ignore
-        // the Glance update path.
-        broadcastUpdate(SimpleListWidgetReceiver::class.java)
         broadcastUpdate(AllTasksWidgetReceiver::class.java)
         broadcastUpdate(OverdueWidgetReceiver::class.java)
         broadcastUpdate(CompletedWidgetReceiver::class.java)
-        Log.d(TAG, "[${System.currentTimeMillis()}] refreshWidgets total ${System.currentTimeMillis() - t0}ms")
-    }
-
-    private suspend fun markOptimisticForWidgets(taskId: Long, isDone: Boolean) {
-        forEachLiveWidget { id ->
-            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
-                prefs.toMutablePreferences().apply {
-                    this[ToggleTaskAction.optimisticKey(taskId)] = isDone
-                }.toPreferences()
-            }
-        }
-    }
-
-    private suspend fun clearOptimisticForWidgets(taskId: Long) {
-        forEachLiveWidget { id ->
-            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
-                prefs.toMutablePreferences().apply {
-                    remove(ToggleTaskAction.optimisticKey(taskId))
-                }.toPreferences()
-            }
-        }
-    }
-
-    private suspend inline fun forEachLiveWidget(block: suspend (androidx.glance.GlanceId) -> Unit) {
-        val mgr = GlanceAppWidgetManager(context)
-        listOf(
-            SimpleListWidget::class.java,
-            AllTasksWidget::class.java,
-            OverdueWidget::class.java,
-            CompletedWidget::class.java,
-        ).forEach { cls ->
-            runCatching {
-                mgr.getGlanceIds(cls).forEach { id -> runCatching { block(id) } }
-            }
-        }
     }
 
     private fun broadcastUpdate(cls: Class<*>) {
@@ -211,8 +145,6 @@ class TaskRepository(
     }
 
     companion object {
-        private const val TAG = "WidgetDbg"
-
         @Volatile private var INSTANCE: TaskRepository? = null
         fun get(context: Context): TaskRepository =
             INSTANCE ?: synchronized(this) {

@@ -11,7 +11,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.todolists"
-        minSdk = 26
+        // API 31 (Android 12): required for RemoteViews.setCompoundButtonChecked
+        // and setOnCheckedChangeResponse, which are what give the V2 widgets
+        // their instant local-toggle behaviour.
+        minSdk = 31
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"

@@ -38,7 +38,8 @@ class RefreshWidgetAction : ActionCallback {
                 }.toPreferences()
             }
         }
-        runCatching { SimpleListWidget().updateAll(app) }
+        // SimpleList is V2 (RemoteViewsService); the broadcast below will
+        // trigger its AppWidgetProvider.onUpdate, no Glance updateAll here.
         runCatching { AllTasksWidget().updateAll(app) }
         runCatching { OverdueWidget().updateAll(app) }
         runCatching { CompletedWidget().updateAll(app) }

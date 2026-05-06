@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.todolists.data.WidgetBackgroundFit
 import com.example.todolists.data.WidgetBackgroundRepository
+import com.example.todolists.widget.WidgetUpdateHelper
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +46,7 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
     val cropLauncher = rememberLauncherForActivityResult(CropImageActivity.Contract) { result: Uri? ->
         if (result != null) {
             repo.setBackgroundUri(result)
+            WidgetUpdateHelper.forceFullUpdate(context)
             Toast.makeText(context, "背景画像を更新しました", Toast.LENGTH_SHORT).show()
         }
     }
@@ -92,6 +94,7 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
                         onClick = {
                             File(context.filesDir, CropImageActivity.OUTPUT_FILE_NAME).delete()
                             repo.setBackgroundUri(null)
+                            WidgetUpdateHelper.forceFullUpdate(context)
                             Toast.makeText(context, "背景画像を解除しました", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f),
@@ -103,17 +106,21 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 Text("表示モード", style = MaterialTheme.typography.titleSmall)
                 WidgetBackgroundFit.values().forEach { fit ->
+                    val pickFit = {
+                        repo.setFit(fit)
+                        WidgetUpdateHelper.forceFullUpdate(context)
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .selectable(
                                 selected = state.fit == fit,
-                                onClick = { repo.setFit(fit) },
+                                onClick = pickFit,
                             )
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = state.fit == fit, onClick = { repo.setFit(fit) })
+                        RadioButton(selected = state.fit == fit, onClick = pickFit)
                         Text(fit.label, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
@@ -143,7 +150,13 @@ fun WidgetBackgroundSheet(onDismiss: () -> Unit) {
             }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("閉じる") }
+                TextButton(onClick = {
+                    // Apply scrim slider changes to widgets when the user
+                    // closes the sheet (we deliberately don't fire on every
+                    // slider tick to avoid broadcast spam).
+                    WidgetUpdateHelper.forceFullUpdate(context)
+                    onDismiss()
+                }) { Text("閉じる") }
             }
         }
     }
