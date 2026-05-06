@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.text.SpannableString
 import android.text.style.StrikethroughSpan
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
@@ -20,8 +21,11 @@ import kotlinx.coroutines.runBlocking
  * give us this.
  */
 class SimpleListService : RemoteViewsService() {
-    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
-        SimpleListFactory(applicationContext)
+    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
+        Log.d(TAG, "onGetViewFactory data=${intent.data}")
+        return SimpleListFactory(applicationContext)
+    }
+    private companion object { const val TAG = "SimpleListSvc" }
 }
 
 private class SimpleListFactory(
@@ -30,15 +34,23 @@ private class SimpleListFactory(
 
     private var items: List<Task> = emptyList()
 
-    override fun onCreate() = Unit
-    override fun onDestroy() { items = emptyList() }
+    override fun onCreate() {
+        Log.d(TAG, "factory onCreate")
+    }
+    override fun onDestroy() {
+        Log.d(TAG, "factory onDestroy")
+        items = emptyList()
+    }
 
     override fun onDataSetChanged() {
         // Called on a worker thread by the system. Snapshot the current
         // simple-list contents from Room.
-        items = runBlocking {
-            TaskDatabase.get(context).taskDao().simpleVisibleSnapshot(MAX_ITEMS)
-        }
+        runCatching {
+            items = runBlocking {
+                TaskDatabase.get(context).taskDao().simpleVisibleSnapshot(MAX_ITEMS)
+            }
+            Log.d(TAG, "onDataSetChanged loaded ${items.size} items")
+        }.onFailure { Log.e(TAG, "onDataSetChanged failed", it) }
     }
 
     override fun getCount(): Int = items.size
@@ -90,5 +102,8 @@ private class SimpleListFactory(
 
     override fun hasStableIds(): Boolean = true
 
-    companion object { private const val MAX_ITEMS = 30 }
+    companion object {
+        private const val TAG = "SimpleListFct"
+        private const val MAX_ITEMS = 30
+    }
 }

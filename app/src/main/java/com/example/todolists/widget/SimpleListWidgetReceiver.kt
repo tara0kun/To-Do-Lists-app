@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import com.example.todolists.MainActivity
@@ -35,6 +36,7 @@ class SimpleListWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
+        Log.d(TAG, "onUpdate ids=${appWidgetIds.toList()}")
         appWidgetIds.forEach { id -> updateOne(context, appWidgetManager, id) }
     }
 
@@ -44,13 +46,18 @@ class SimpleListWidgetReceiver : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle?,
     ) {
+        Log.d(TAG, "onAppWidgetOptionsChanged id=$appWidgetId")
         updateOne(context, appWidgetManager, appWidgetId)
     }
 
     private fun updateOne(context: Context, mgr: AppWidgetManager, id: Int) {
-        val views = buildBaseViews(context, id)
-        mgr.updateAppWidget(id, views)
-        mgr.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
+        Log.d(TAG, "updateOne id=$id start")
+        runCatching {
+            val views = buildBaseViews(context, id)
+            mgr.updateAppWidget(id, views)
+            mgr.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
+            Log.d(TAG, "updateOne id=$id pushed views")
+        }.onFailure { Log.e(TAG, "updateOne id=$id failed", it) }
 
         // Background image is optional and decoding it is too slow for
         // the main thread; load it asynchronously and re-push the views
@@ -141,6 +148,8 @@ class SimpleListWidgetReceiver : AppWidgetProvider() {
         views.setViewVisibility(R.id.widget_bg_scrim, View.GONE)
         return views
     }
+
+    companion object { private const val TAG = "SimpleListV2" }
 
     private fun applyBackground(
         views: RemoteViews,
