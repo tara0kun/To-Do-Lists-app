@@ -12,7 +12,7 @@
         android:visibility="gone"
         android:contentDescription="@null" />
 
-    <View
+    <FrameLayout
         android:id="@+id/widget_bg_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

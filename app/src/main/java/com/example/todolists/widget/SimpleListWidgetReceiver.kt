@@ -112,11 +112,11 @@ class SimpleListWidgetReceiver : AppWidgetProvider() {
             ),
         )
 
-        // List backed by RemoteViewsService. The data URI carries the
-        // widget id so each instance gets its own factory.
+        // List backed by RemoteViewsService. The data URI is unique per
+        // widget id so each instance gets its own factory; the system
+        // also fills in EXTRA_APPWIDGET_ID on the intent automatically.
         val serviceIntent = Intent(context, SimpleListService::class.java).apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-            data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+            data = Uri.parse("widget://simplelist/$id")
         }
         views.setRemoteAdapter(R.id.widget_list, serviceIntent)
         views.setEmptyView(R.id.widget_list, R.id.widget_empty)
