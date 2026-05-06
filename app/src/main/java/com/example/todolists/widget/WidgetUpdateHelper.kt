@@ -23,8 +23,9 @@ object WidgetUpdateHelper {
     /** Widget provider classes that use the V2 (RemoteViewsService) path. */
     private val v2Providers: List<Class<*>> = listOf(
         SimpleListWidgetReceiver::class.java,
-        // Phase 2: AllTasksWidgetReceiver, OverdueWidgetReceiver,
-        // CompletedWidgetReceiver — once they migrate.
+        AllTasksWidgetReceiver::class.java,
+        OverdueWidgetReceiver::class.java,
+        CompletedWidgetReceiver::class.java,
     )
 
     fun notifyDataChanged(context: Context) {
@@ -38,21 +39,14 @@ object WidgetUpdateHelper {
     }
 
     /**
-     * Sends ACTION_APPWIDGET_UPDATE to every widget receiver this app
-     * declares (V1 Glance + V2). Both flavours respond to that broadcast
-     * by rebuilding their RemoteViews from scratch, which is what we
-     * want when something outside the task list changes (e.g. the
-     * background image setting).
+     * Sends ACTION_APPWIDGET_UPDATE to every widget receiver. Each
+     * provider's onUpdate rebuilds RemoteViews from scratch — used when
+     * something outside the task list changes (e.g. the background
+     * image / scrim / fit settings).
      */
     fun forceFullUpdate(context: Context) {
         val mgr = AppWidgetManager.getInstance(context)
-        val allProviders: List<Class<*>> = listOf(
-            SimpleListWidgetReceiver::class.java,
-            AllTasksWidgetReceiver::class.java,
-            OverdueWidgetReceiver::class.java,
-            CompletedWidgetReceiver::class.java,
-        )
-        allProviders.forEach { cls ->
+        v2Providers.forEach { cls ->
             val ids = mgr.getAppWidgetIds(ComponentName(context, cls))
             if (ids.isNotEmpty()) {
                 val intent = Intent(context, cls).apply {

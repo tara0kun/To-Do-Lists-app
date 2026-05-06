@@ -116,6 +116,18 @@
             android:name=".widget.SimpleListService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
+        <service
+            android:name=".widget.AllTasksService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+        <service
+            android:name=".widget.OverdueService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+        <service
+            android:name=".widget.CompletedService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
 
         <receiver
             android:name=".widget.ToggleTaskReceiver"
