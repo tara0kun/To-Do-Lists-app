@@ -54,14 +54,11 @@
                 android:padding="6dp"
                 android:contentDescription="更新" />
 
-            <Space
-                android:layout_width="4dp"
-                android:layout_height="match_parent" />
-
             <ImageButton
                 android:id="@+id/widget_btn_add"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
+                android:layout_marginStart="4dp"
                 android:src="@drawable/ic_widget_add"
                 android:background="@drawable/widget_button_bg"
                 android:scaleType="centerInside"
@@ -69,15 +66,12 @@
                 android:contentDescription="追加" />
         </LinearLayout>
 
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="4dp" />
-
         <ListView
             android:id="@+id/widget_list"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:layout_marginTop="4dp"
             android:divider="@null"
             android:dividerHeight="0dp"
             android:overScrollMode="never" />
@@ -87,6 +81,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:layout_marginTop="4dp"
             android:gravity="center"
             android:textSize="13sp"
             android:textColor="@color/widget_text_secondary" />

@@ -12,12 +12,9 @@
         android:id="@+id/item_check"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="4dp"
         android:minWidth="32dp"
         android:minHeight="32dp" />
-
-    <Space
-        android:layout_width="4dp"
-        android:layout_height="match_parent" />
 
     <LinearLayout
         android:layout_width="0dp"
