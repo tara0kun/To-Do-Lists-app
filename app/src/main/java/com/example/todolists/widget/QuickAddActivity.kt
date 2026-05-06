@@ -23,7 +23,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.lifecycleScope
 import com.example.todolists.data.TaskRepository
 import com.example.todolists.ui.theme.ToDoListsAppTheme
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class QuickAddActivity : ComponentActivity() {
@@ -42,11 +41,10 @@ class QuickAddActivity : ComponentActivity() {
                         lifecycleScope.launch {
                             val repository = TaskRepository.get(applicationContext)
                             if (simple) repository.addSimple(text) else repository.add(text)
-                            // Brief grace period so the broadcasts the
-                            // refresh fires can be delivered before this
-                            // activity tears down and the process drops to
-                            // a cached state.
-                            delay(400)
+                            // refreshWidgets() inside add()/addSimple() already
+                            // awaits the Glance updateAll calls, so by the time
+                            // we get here the new RemoteViews are in flight.
+                            // Closing immediately makes the dialog feel instant.
                             finish()
                         }
                     },
