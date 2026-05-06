@@ -3,12 +3,16 @@ package com.example.todolists.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.todolists.data.AppTheme
 import com.example.todolists.data.UserPreferencesRepository
+import com.example.todolists.notifications.NotificationDebug
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +68,21 @@ fun AppearanceSheet(onDismiss: () -> Unit) {
                     Text(theme.label, modifier = Modifier.padding(start = 8.dp))
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(4.dp))
+
+            Text("動作確認", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "リマインダーが届くか手元で試したい時に使ってください。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(
+                onClick = { NotificationDebug.fireTestNotification(context) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("テスト通知を送る") }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("閉じる") }

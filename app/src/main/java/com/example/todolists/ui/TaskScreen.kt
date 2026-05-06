@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.NotificationImportant
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Schedule
@@ -102,15 +101,6 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                     }
                     IconButton(onClick = { showCalendarSettings = true }) {
                         Icon(Icons.Filled.Event, contentDescription = "カレンダー連携先")
-                    }
-                    IconButton(onClick = {
-                        com.example.todolists.notifications.NotificationDebug
-                            .fireTestNotification(context)
-                    }) {
-                        Icon(
-                            Icons.Filled.NotificationImportant,
-                            contentDescription = "通知をテスト",
-                        )
                     }
                     if (!isSimpleTab) {
                         IconButton(onClick = { showSortSheet = true }) {

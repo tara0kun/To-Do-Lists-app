@@ -54,11 +54,13 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
     }
 
     private fun updateOne(context: Context, mgr: AppWidgetManager, id: Int) {
-        val fgMode = runCatching {
-            WidgetBackgroundRepository.get(context).state.value.foregroundMode
-        }.getOrDefault(WidgetForegroundMode.AUTO)
+        val settings = runCatching {
+            WidgetBackgroundRepository.get(context).state.value
+        }.getOrNull()
+        val fgMode = settings?.foregroundMode ?: WidgetForegroundMode.AUTO
+        val customColor = settings?.customForegroundColor ?: 0xFFFFFFFF.toInt()
         runCatching {
-            val views = buildBaseViews(context, id, fgMode, hasBg = false)
+            val views = buildBaseViews(context, id, fgMode, customColor, hasBg = false)
             mgr.updateAppWidget(id, views)
             mgr.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
         }.onFailure { Log.e(tag, "updateOne id=$id failed", it) }
@@ -68,7 +70,7 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         WidgetWorkScope.launch {
             val bg = WidgetBackgroundLoader.load(context)
             if (bg != null) {
-                val withBg = buildBaseViews(context, id, fgMode, hasBg = true).apply {
+                val withBg = buildBaseViews(context, id, fgMode, customColor, hasBg = true).apply {
                     applyBackground(this, bg)
                 }
                 withContext(Dispatchers.Main) {
@@ -82,11 +84,12 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         context: Context,
         id: Int,
         fgMode: WidgetForegroundMode,
+        customColor: Int,
         hasBg: Boolean,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_root)
-        val fgPrimary = foregroundPrimary(context, fgMode, hasBg)
-        val fgSecondary = foregroundSecondary(context, fgMode, hasBg)
+        val fgPrimary = foregroundPrimary(context, fgMode, customColor, hasBg)
+        val fgSecondary = foregroundSecondary(context, fgMode, customColor, hasBg)
 
         views.setTextViewText(R.id.widget_title, title)
         views.setTextColor(R.id.widget_title, fgPrimary)
@@ -187,6 +190,7 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
     private fun foregroundPrimary(
         context: Context,
         mode: WidgetForegroundMode,
+        customColor: Int,
         hasBg: Boolean,
     ): Int = when (mode) {
         WidgetForegroundMode.AUTO ->
@@ -196,11 +200,14 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
             context.getColor(R.color.widget_text_on_image)
         WidgetForegroundMode.DARK ->
             android.graphics.Color.BLACK
+        WidgetForegroundMode.CUSTOM ->
+            customColor
     }
 
     private fun foregroundSecondary(
         context: Context,
         mode: WidgetForegroundMode,
+        customColor: Int,
         hasBg: Boolean,
     ): Int = when (mode) {
         WidgetForegroundMode.AUTO ->
@@ -210,5 +217,8 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
             context.getColor(R.color.widget_text_on_image_dim)
         WidgetForegroundMode.DARK ->
             android.graphics.Color.parseColor("#FF555555")
+        // For custom, dim the secondary text by reducing alpha to ~70%.
+        WidgetForegroundMode.CUSTOM ->
+            (customColor and 0x00FFFFFF) or (0xB0 shl 24)
     }
 }

@@ -22,7 +22,9 @@ enum class WidgetForegroundMode(val label: String) {
     /** タイトル・アイコン・空メッセージを常に白系に。 */
     LIGHT("白系 (明るい色)"),
     /** タイトル・アイコン・空メッセージを常に黒系に。 */
-    DARK("黒系 (暗い色)");
+    DARK("黒系 (暗い色)"),
+    /** ユーザーが選んだ色（[WidgetBackgroundSettings.customForegroundColor]）。 */
+    CUSTOM("カスタム色");
 
     companion object { val DEFAULT = AUTO }
 }
@@ -32,6 +34,8 @@ data class WidgetBackgroundSettings(
     val scrimAlpha: Float = 0.50f,
     val fit: WidgetBackgroundFit = WidgetBackgroundFit.CROP,
     val foregroundMode: WidgetForegroundMode = WidgetForegroundMode.DEFAULT,
+    /** ARGB int. Only used when [foregroundMode] is CUSTOM. Defaults to white. */
+    val customForegroundColor: Int = 0xFFFFFFFF.toInt(),
 )
 
 class WidgetBackgroundRepository private constructor(context: Context) {
@@ -52,6 +56,7 @@ class WidgetBackgroundRepository private constructor(context: Context) {
     fun setScrimAlpha(alpha: Float) = update { it.copy(scrimAlpha = alpha.coerceIn(0f, 1f)) }
     fun setFit(fit: WidgetBackgroundFit) = update { it.copy(fit = fit) }
     fun setForegroundMode(mode: WidgetForegroundMode) = update { it.copy(foregroundMode = mode) }
+    fun setCustomForegroundColor(color: Int) = update { it.copy(customForegroundColor = color) }
 
     private fun update(transform: (WidgetBackgroundSettings) -> WidgetBackgroundSettings) {
         val next = transform(_state.value)
@@ -60,6 +65,7 @@ class WidgetBackgroundRepository private constructor(context: Context) {
             putFloat(KEY_SCRIM, next.scrimAlpha)
             putString(KEY_FIT, next.fit.name)
             putString(KEY_FG_MODE, next.foregroundMode.name)
+            putInt(KEY_FG_COLOR, next.customForegroundColor)
         }.apply()
         _state.value = next
         _backgroundUriFlow.value = next.uri
@@ -74,11 +80,13 @@ class WidgetBackgroundRepository private constructor(context: Context) {
         val fgMode = prefs.getString(KEY_FG_MODE, null)
             ?.let { runCatching { WidgetForegroundMode.valueOf(it) }.getOrNull() }
             ?: WidgetForegroundMode.DEFAULT
+        val fgColor = prefs.getInt(KEY_FG_COLOR, 0xFFFFFFFF.toInt())
         return WidgetBackgroundSettings(
             uri = uri,
             scrimAlpha = scrim,
             fit = fit,
             foregroundMode = fgMode,
+            customForegroundColor = fgColor,
         )
     }
 
@@ -88,6 +96,7 @@ class WidgetBackgroundRepository private constructor(context: Context) {
         private const val KEY_SCRIM = "scrim_alpha"
         private const val KEY_FIT = "fit"
         private const val KEY_FG_MODE = "fg_mode"
+        private const val KEY_FG_COLOR = "fg_color"
 
         @Volatile private var INSTANCE: WidgetBackgroundRepository? = null
         fun get(context: Context): WidgetBackgroundRepository =
