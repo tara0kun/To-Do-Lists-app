@@ -10,6 +10,7 @@ import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.example.todolists.R
 import com.example.todolists.data.Task
+import com.example.todolists.data.WidgetBackgroundRepository
 import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,6 +34,8 @@ abstract class BaseTaskListFactory(
 ) : RemoteViewsService.RemoteViewsFactory {
 
     protected var items: List<Task> = emptyList()
+    private var primaryColor: Int = context.getColor(R.color.widget_text_primary)
+    private var secondaryColor: Int = context.getColor(R.color.widget_text_secondary)
 
     /** Whether to render the meta (due date) text under each task title. */
     protected abstract val showMeta: Boolean
@@ -50,6 +53,12 @@ abstract class BaseTaskListFactory(
     }
 
     override fun onDataSetChanged() {
+        // Refresh the resolved foreground colours so list rows track the
+        // user's WidgetForegroundMode setting alongside the chrome.
+        val settings = WidgetBackgroundRepository.get(context).state.value
+        primaryColor = WidgetForegroundResolver.primary(context, settings)
+        secondaryColor = WidgetForegroundResolver.secondary(context, settings)
+
         runCatching {
             items = runBlocking { fetchItems() }
         }.onFailure { Log.e(tag, "onDataSetChanged failed", it) }
@@ -68,18 +77,12 @@ abstract class BaseTaskListFactory(
             }
         } else task.title
         views.setTextViewText(R.id.item_title, title)
-        views.setTextColor(
-            R.id.item_title,
-            context.getColor(R.color.widget_text_primary),
-        )
+        views.setTextColor(R.id.item_title, primaryColor)
 
         if (showMeta && task.dueAt != null) {
             views.setViewVisibility(R.id.item_meta, View.VISIBLE)
             views.setTextViewText(R.id.item_meta, formatCompactDue(task.dueAt))
-            views.setTextColor(
-                R.id.item_meta,
-                context.getColor(R.color.widget_text_secondary),
-            )
+            views.setTextColor(R.id.item_meta, secondaryColor)
         } else {
             views.setViewVisibility(R.id.item_meta, View.GONE)
         }

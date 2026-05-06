@@ -88,8 +88,8 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         hasBg: Boolean,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_root)
-        val fgPrimary = foregroundPrimary(context, fgMode, customColor, hasBg)
-        val fgSecondary = foregroundSecondary(context, fgMode, customColor, hasBg)
+        val fgPrimary = WidgetForegroundResolver.primary(context, fgMode, customColor, hasBg)
+        val fgSecondary = WidgetForegroundResolver.secondary(context, fgMode, customColor, hasBg)
 
         views.setTextViewText(R.id.widget_title, title)
         views.setTextColor(R.id.widget_title, fgPrimary)
@@ -187,38 +187,4 @@ abstract class BaseTaskWidgetReceiver : AppWidgetProvider() {
         views.setViewVisibility(R.id.widget_bg_scrim, View.VISIBLE)
     }
 
-    private fun foregroundPrimary(
-        context: Context,
-        mode: WidgetForegroundMode,
-        customColor: Int,
-        hasBg: Boolean,
-    ): Int = when (mode) {
-        WidgetForegroundMode.AUTO ->
-            if (hasBg) context.getColor(R.color.widget_text_on_image)
-            else context.getColor(R.color.widget_text_primary)
-        WidgetForegroundMode.LIGHT ->
-            context.getColor(R.color.widget_text_on_image)
-        WidgetForegroundMode.DARK ->
-            android.graphics.Color.BLACK
-        WidgetForegroundMode.CUSTOM ->
-            customColor
-    }
-
-    private fun foregroundSecondary(
-        context: Context,
-        mode: WidgetForegroundMode,
-        customColor: Int,
-        hasBg: Boolean,
-    ): Int = when (mode) {
-        WidgetForegroundMode.AUTO ->
-            if (hasBg) context.getColor(R.color.widget_text_on_image_dim)
-            else context.getColor(R.color.widget_text_secondary)
-        WidgetForegroundMode.LIGHT ->
-            context.getColor(R.color.widget_text_on_image_dim)
-        WidgetForegroundMode.DARK ->
-            android.graphics.Color.parseColor("#FF555555")
-        // For custom, dim the secondary text by reducing alpha to ~70%.
-        WidgetForegroundMode.CUSTOM ->
-            (customColor and 0x00FFFFFF) or (0xB0 shl 24)
-    }
 }
