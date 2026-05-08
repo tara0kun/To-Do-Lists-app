@@ -14,6 +14,10 @@ data class Task(
     val remindOnDay: Boolean = false,
     val remindOnDayHour: Int = 9,
     val remindOnDayMinute: Int = 0,
+    /** Whether to fire a reminder at [remindCustomAt]. Independent of [dueAt]. */
+    val remindCustom: Boolean = false,
+    /** Epoch millis for the custom reminder. Null when [remindCustom] is false. */
+    val remindCustomAt: Long? = null,
     val priority: Int = Priority.MEDIUM.storageValue,
     val isSimple: Boolean = false,
     val calendarEventId: Long? = null,

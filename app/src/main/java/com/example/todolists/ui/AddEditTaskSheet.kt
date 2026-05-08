@@ -61,6 +61,10 @@ data class TaskDraft(
     val remindOnDay: Boolean = false,
     val onDayHour: Int = 9,
     val onDayMinute: Int = 0,
+    val remindCustom: Boolean = false,
+    val customDateMillis: Long? = null,
+    val customHour: Int? = null,
+    val customMinute: Int? = null,
     val priority: Priority = Priority.DEFAULT,
     val addToCalendar: Boolean = false,
 ) {
@@ -76,19 +80,47 @@ data class TaskDraft(
             }
             return cal.timeInMillis
         }
+
+    val combinedCustomReminderAt: Long?
+        get() {
+            val date = customDateMillis ?: return null
+            val cal = Calendar.getInstance().apply {
+                timeInMillis = date
+                set(Calendar.HOUR_OF_DAY, customHour ?: 9)
+                set(Calendar.MINUTE, customMinute ?: 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            return cal.timeInMillis
+        }
 }
 
 fun Task.toDraft(): TaskDraft {
-    val cal = dueAt?.let { Calendar.getInstance().apply { timeInMillis = it } }
+    val dueCal = dueAt?.let { Calendar.getInstance().apply { timeInMillis = it } }
+    val customCal = remindCustomAt?.let { Calendar.getInstance().apply { timeInMillis = it } }
     return TaskDraft(
         title = title,
         dueDateMillis = dueAt,
-        dueHour = cal?.get(Calendar.HOUR_OF_DAY),
-        dueMinute = cal?.get(Calendar.MINUTE),
+        dueHour = dueCal?.get(Calendar.HOUR_OF_DAY),
+        dueMinute = dueCal?.get(Calendar.MINUTE),
         remindAtDue = remindAtDue,
         remindOnDay = remindOnDay,
         onDayHour = remindOnDayHour,
         onDayMinute = remindOnDayMinute,
+        remindCustom = remindCustom,
+        customDateMillis = customCal?.let {
+            Calendar.getInstance().apply {
+                set(Calendar.YEAR, it.get(Calendar.YEAR))
+                set(Calendar.MONTH, it.get(Calendar.MONTH))
+                set(Calendar.DAY_OF_MONTH, it.get(Calendar.DAY_OF_MONTH))
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        },
+        customHour = customCal?.get(Calendar.HOUR_OF_DAY),
+        customMinute = customCal?.get(Calendar.MINUTE),
         priority = priorityEnum,
     )
 }
@@ -107,6 +139,8 @@ fun AddEditTaskSheet(
     var showDatePicker by remember { mutableStateOf(false) }
     var showDueTimePicker by remember { mutableStateOf(false) }
     var showOnDayTimePicker by remember { mutableStateOf(false) }
+    var showCustomDatePicker by remember { mutableStateOf(false) }
+    var showCustomTimePicker by remember { mutableStateOf(false) }
 
     fun close(after: () -> Unit = {}) {
         scope.launch {
@@ -217,6 +251,48 @@ fun AddEditTaskSheet(
                 }
             }
 
+            ReminderRow(
+                label = "指定した日時に通知",
+                enabled = true,
+                checked = draft.remindCustom,
+                onCheckedChange = { draft = draft.copy(remindCustom = it) },
+            )
+            if (draft.remindCustom) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OutlinedButton(
+                        onClick = { showCustomDatePicker = true },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Filled.Event, contentDescription = null)
+                        Spacer(Modifier.padding(2.dp))
+                        Text(draft.customDateMillis?.let { formatDate(it) } ?: "日付を選択")
+                    }
+                    OutlinedButton(
+                        onClick = { showCustomTimePicker = true },
+                        enabled = draft.customDateMillis != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Filled.AccessTime, contentDescription = null)
+                        Spacer(Modifier.padding(2.dp))
+                        Text(
+                            if (draft.customHour != null) formatTime(draft.customHour!!, draft.customMinute ?: 0)
+                            else "時刻を選択",
+                        )
+                    }
+                }
+                if (draft.customDateMillis == null || draft.customHour == null) {
+                    Text(
+                        "日付と時刻を両方選んでください。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             Spacer(Modifier.height(4.dp))
             Text("カレンダー連携", style = MaterialTheme.typography.titleSmall)
             ReminderRow(
@@ -309,6 +385,50 @@ fun AddEditTaskSheet(
             onConfirm = { h, m ->
                 draft = draft.copy(onDayHour = h, onDayMinute = m)
                 showOnDayTimePicker = false
+            },
+        )
+    }
+
+    if (showCustomDatePicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = draft.customDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showCustomDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { utc ->
+                        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                            timeInMillis = utc
+                        }
+                        val local = Calendar.getInstance().apply {
+                            set(Calendar.YEAR, cal.get(Calendar.YEAR))
+                            set(Calendar.MONTH, cal.get(Calendar.MONTH))
+                            set(Calendar.DAY_OF_MONTH, cal.get(Calendar.DAY_OF_MONTH))
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        draft = draft.copy(customDateMillis = local.timeInMillis)
+                    }
+                    showCustomDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDatePicker = false }) { Text("キャンセル") }
+            },
+        ) {
+            DatePicker(state = state)
+        }
+    }
+
+    if (showCustomTimePicker) {
+        TimePickerDialog(
+            initialHour = draft.customHour ?: 9,
+            initialMinute = draft.customMinute ?: 0,
+            onDismiss = { showCustomTimePicker = false },
+            onConfirm = { h, m ->
+                draft = draft.copy(customHour = h, customMinute = m)
+                showCustomTimePicker = false
             },
         )
     }

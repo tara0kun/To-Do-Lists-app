@@ -21,24 +21,36 @@ class ReminderScheduler(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     fun schedule(task: Task) {
-        if (task.isDone || task.dueAt == null) return
+        if (task.isDone) return
         val now = System.currentTimeMillis()
         val parts = mutableListOf<String>()
-        if (task.remindAtDue) {
-            if (task.dueAt > now) {
-                scheduleAt(task, ReminderKind.AT_DUE, task.dueAt)
-                parts += "期限時刻 ${formatTime(task.dueAt)}"
-            } else {
-                parts += "期限時刻(過去のためスキップ)"
+        // The two due-date-based reminders both require dueAt to make sense.
+        if (task.dueAt != null) {
+            if (task.remindAtDue) {
+                if (task.dueAt > now) {
+                    scheduleAt(task, ReminderKind.AT_DUE, task.dueAt)
+                    parts += "期限時刻 ${formatTime(task.dueAt)}"
+                } else {
+                    parts += "期限時刻(過去のためスキップ)"
+                }
+            }
+            if (task.remindOnDay) {
+                val onDayMillis = computeOnDayMillis(task.dueAt, task.remindOnDayHour, task.remindOnDayMinute)
+                if (onDayMillis > now) {
+                    scheduleAt(task, ReminderKind.ON_DAY, onDayMillis)
+                    parts += "当日 ${formatTime(onDayMillis)}"
+                } else {
+                    parts += "当日(過去のためスキップ)"
+                }
             }
         }
-        if (task.remindOnDay) {
-            val onDayMillis = computeOnDayMillis(task.dueAt, task.remindOnDayHour, task.remindOnDayMinute)
-            if (onDayMillis > now) {
-                scheduleAt(task, ReminderKind.ON_DAY, onDayMillis)
-                parts += "当日 ${formatTime(onDayMillis)}"
+        // Custom reminder is independent of dueAt; user picks a free datetime.
+        if (task.remindCustom && task.remindCustomAt != null) {
+            if (task.remindCustomAt > now) {
+                scheduleAt(task, ReminderKind.CUSTOM, task.remindCustomAt)
+                parts += "指定日時 ${formatTime(task.remindCustomAt)}"
             } else {
-                parts += "当日(過去のためスキップ)"
+                parts += "指定日時(過去のためスキップ)"
             }
         }
         if (parts.isNotEmpty()) {
@@ -109,7 +121,9 @@ class ReminderScheduler(private val context: Context) {
     }
 
     private fun requestCode(taskId: Long, kind: ReminderKind): Int {
-        val base = (taskId.toInt() and 0x3FFFFFFF) shl 1
+        // Reserve 2 bits for the kind so we don't collide as more kinds
+        // are added (matches ReminderReceiver.notificationId).
+        val base = (taskId.toInt() and 0x1FFFFFFF) shl 2
         return base or kind.ordinal
     }
 
@@ -123,4 +137,4 @@ class ReminderScheduler(private val context: Context) {
     }
 }
 
-enum class ReminderKind { AT_DUE, ON_DAY }
+enum class ReminderKind { AT_DUE, ON_DAY, CUSTOM }

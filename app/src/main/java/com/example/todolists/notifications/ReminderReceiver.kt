@@ -71,6 +71,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val heading = when (kind) {
             ReminderKind.AT_DUE -> "期限になりました"
             ReminderKind.ON_DAY -> "今日が期限のタスク"
+            ReminderKind.CUSTOM -> "リマインド"
         }
         val body = buildString {
             append(title.ifBlank { "タスク" })
@@ -97,7 +98,9 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 
     private fun notificationId(taskId: Long, kind: ReminderKind): Int {
-        val base = (taskId.toInt() and 0x3FFFFFFF) shl 1
+        // Reserve the bottom 2 bits for the kind (3 enum values today,
+        // room for a 4th). The remaining 30 bits hold the task id.
+        val base = (taskId.toInt() and 0x1FFFFFFF) shl 2
         return base or kind.ordinal
     }
 

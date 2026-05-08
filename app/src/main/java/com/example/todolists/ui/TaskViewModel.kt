@@ -77,18 +77,22 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         remindOnDay: Boolean,
         remindOnDayHour: Int,
         remindOnDayMinute: Int,
+        remindCustom: Boolean = false,
+        remindCustomAt: Long? = null,
         priority: Int,
         calendarEventId: Long? = null,
     ) = viewModelScope.launch {
         repository.add(
-            title,
-            dueAt,
-            remindAtDue,
-            remindOnDay,
-            remindOnDayHour,
-            remindOnDayMinute,
-            priority,
-            calendarEventId,
+            title = title,
+            dueAt = dueAt,
+            remindAtDue = remindAtDue,
+            remindOnDay = remindOnDay,
+            remindOnDayHour = remindOnDayHour,
+            remindOnDayMinute = remindOnDayMinute,
+            remindCustom = remindCustom,
+            remindCustomAt = remindCustomAt,
+            priority = priority,
+            calendarEventId = calendarEventId,
         )
     }
 

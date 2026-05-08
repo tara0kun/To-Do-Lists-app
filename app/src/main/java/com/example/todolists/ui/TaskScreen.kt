@@ -193,6 +193,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                             ),
                         )
                     } else null
+                    val customAt = draft.combinedCustomReminderAt
                     viewModel.add(
                         title = draft.title,
                         dueAt = draft.combinedDueAt,
@@ -200,6 +201,8 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                         remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
                         remindOnDayHour = draft.onDayHour,
                         remindOnDayMinute = draft.onDayMinute,
+                        remindCustom = draft.remindCustom && customAt != null,
+                        remindCustomAt = customAt.takeIf { draft.remindCustom },
                         priority = draft.priority.storageValue,
                         calendarEventId = eventId,
                     )
@@ -228,6 +231,7 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                             ),
                         )
                     } else null
+                    val customAt = draft.combinedCustomReminderAt
                     val updated = task.copy(
                         title = draft.title.trim(),
                         dueAt = draft.combinedDueAt,
@@ -235,6 +239,8 @@ fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
                         remindOnDay = draft.remindOnDay && draft.dueDateMillis != null,
                         remindOnDayHour = draft.onDayHour,
                         remindOnDayMinute = draft.onDayMinute,
+                        remindCustom = draft.remindCustom && customAt != null,
+                        remindCustomAt = customAt.takeIf { draft.remindCustom },
                         priority = draft.priority.storageValue,
                         calendarEventId = newEventId ?: task.calendarEventId,
                     )

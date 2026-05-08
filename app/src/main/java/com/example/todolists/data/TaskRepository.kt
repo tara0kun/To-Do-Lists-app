@@ -20,6 +20,8 @@ class TaskRepository(
         remindOnDay: Boolean = false,
         remindOnDayHour: Int = 9,
         remindOnDayMinute: Int = 0,
+        remindCustom: Boolean = false,
+        remindCustomAt: Long? = null,
         priority: Int = Priority.MEDIUM.storageValue,
         calendarEventId: Long? = null,
     ): Long {
@@ -33,6 +35,8 @@ class TaskRepository(
                 remindOnDay = remindOnDay && dueAt != null,
                 remindOnDayHour = remindOnDayHour,
                 remindOnDayMinute = remindOnDayMinute,
+                remindCustom = remindCustom && remindCustomAt != null,
+                remindCustomAt = remindCustomAt.takeIf { remindCustom },
                 priority = priority,
                 calendarEventId = calendarEventId,
             )
